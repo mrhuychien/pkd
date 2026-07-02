@@ -72,6 +72,28 @@ async function renderRoute(routeKey, ctx) {
     }
 }
 
+// ─── 5b. Desktop nav ngang (8 mục; CSS ẩn trên mobile) ─────────────────
+const DESK_NAV = [
+    ['/', '🏠 Tổng quan'], ['/npp', '📦 NPP'], ['/mt', '🏬 MT'], ['/dulich', '🧳 Du lịch'],
+    ['/trungbay', '🎁 Trưng bày'], ['/tet', '🧧 Tết'], ['/chitieu', '🎯 Chỉ tiêu'], ['/khampha', '🔍 Khám phá'],
+];
+(function buildDesktopNav() {
+    const app = document.getElementById('kd-app');
+    const main = document.getElementById('kd-view');
+    if (!app || !main) return;
+    const nav = document.createElement('nav');
+    nav.className = 'kd-desktop-nav';
+    nav.id = 'kd-desktop-nav';
+    nav.innerHTML = DESK_NAV.map(([r, l]) => `<a href="#${r}" data-route="${r}">${l}</a>`).join('');
+    main.parentNode.insertBefore(nav, main);
+})();
+function highlightDesktopNav(path) {
+    const seg = '/' + (path.split('/')[1] || '');
+    document.querySelectorAll('#kd-desktop-nav a').forEach((a) => {
+        a.classList.toggle('kd-active', a.dataset.route === seg);
+    });
+}
+
 // ─── 6. Routes ─────────────────────────────────────────────────────────
 const simple = ['/', '/npp', '/mt', '/dulich', '/them', '/trungbay', '/tet', '/chitieu', '/khampha'];
 simple.forEach((r) => {
@@ -83,6 +105,7 @@ router.add('/khach/:id', ({ params, query }) => { highlightActiveRoute('/khach')
 // ─── 7. Header title + back button sync ────────────────────────────────
 router.setBeforeNavigate(({ path }) => {
     const seg = '/' + (path.split('/')[1] || '');
+    highlightDesktopNav(path);
     document.getElementById('kd-header-title').textContent = TITLES[seg] || 'PKD';
     const isDetail = path !== '/' && path.split('/').length > 2;
     const backBtn  = document.getElementById('kd-btn-back');

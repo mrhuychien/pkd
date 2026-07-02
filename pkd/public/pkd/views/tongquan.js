@@ -31,6 +31,7 @@ export async function render({ container }) {
 
     container.innerHTML = html`
         ${banner({ title: `Xin chào, ${who}`, subtitle: `Nhịp hôm nay · ${todayStr}` })}
+        <div id="kd-ov-tet"></div>
         <div class="kd-kpi-grid" id="kd-ov-kpis">
             ${cardSkeleton()}${cardSkeleton()}${cardSkeleton()}${cardSkeleton()}
         </div>
@@ -51,6 +52,7 @@ export async function render({ container }) {
             api.cached.overview(),
             api.getActionQueues(),
         ]);
+        renderTetBanner(ov.tet);
         renderKpis(ov);
         renderChannels(ov);
         renderQueues(q.queues || []);
@@ -62,6 +64,16 @@ export async function render({ container }) {
              <div class="kd-empty-title">Không tải được dữ liệu</div>
              <div class="kd-text-sm">${escapeHtml(err.message)}</div></div>`;
     }
+}
+
+function renderTetBanner(tet) {
+    const root = document.getElementById('kd-ov-tet');
+    if (!root || !tet || !tet.in_window) { if (root) root.innerHTML = ''; return; }
+    root.innerHTML = html`
+        <a href="#/tet" class="kd-card kd-mb-2" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--kd-text);border-left:4px solid var(--kd-warning);">
+            <span style="font-size:1.6rem;">🧧</span>
+            <span><b>Mùa Tết ${tet.tet_year}</b> — còn ${formatNumber(tet.days_to_tet)} ngày. Xem theo dõi Tết →</span>
+        </a>`;
 }
 
 function renderKpis(ov) {

@@ -196,3 +196,17 @@ def tet_date(year: int):
 def iso(d):
 	"""Chuyển date → chuỗi ISO 'YYYY-MM-DD' để trả FE (None-safe)."""
 	return str(getdate(d)) if d else None
+
+
+def tet_banner_info(today=None, window: int = 60):
+	"""Thông tin thẻ "Mùa Tết" cho Tổng quan. None nếu ngoài bảng TET_DATES.
+
+	in_window = còn trong cửa sổ Tết sắp tới (days_to_tet <= window).
+	"""
+	today = getdate(today) if today else getdate(nowdate())
+	upcoming = sorted(getdate(d) for d in TET_DATES.values() if getdate(d) >= today)
+	if not upcoming:
+		return None
+	td = upcoming[0]
+	days = (td - today).days
+	return {"tet_year": td.year, "tet_date": str(td), "days_to_tet": days, "in_window": days <= int(window)}

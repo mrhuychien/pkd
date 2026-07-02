@@ -24,6 +24,7 @@ from pkd.api.utils import (
 	period_mtd,
 	run_rate,
 	shift_period,
+	tet_banner_info,
 )
 
 
@@ -280,4 +281,5 @@ def get_overview():
 		"mix_item_group": _mix_item_group(period["start"], period["end"], all_groups),
 		"aging_total": _aging_total(all_groups, period["end"]),
 		"action_counts": action_counts,
+		"tet": tet_banner_info(period["end"], int(get_settings().tet_cua_so_ngay or 60)),
 	}
