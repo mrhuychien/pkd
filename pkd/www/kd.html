@@ -1,0 +1,119 @@
+{% extends "templates/web.html" %}
+
+{% block title %}Dashboard Phòng KD{% endblock %}
+
+{% block head_include %}
+{% set kd_v = (frappe.utils.now() | replace(" ", "T") | replace(":", "-")) %}
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#0f172a">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/assets/pkd/pkd/shell.css?v={{ kd_v }}">
+
+<!-- Import map: version-bust MỌI shared module (lib/ + components/). ES static
+     import KHÔNG kế thừa ?v= của module cha → nếu không remap ở đây trình duyệt
+     chạy bản cache cũ (Frappe cache /assets 'immutable' 1 năm) gây lỗi "does not
+     provide an export named ...". PHẢI đặt trước mọi <script type="module">.
+     View modules tự cache-bust qua assetVersion (withV) trong shell.js. -->
+<script type="importmap">
+{
+  "imports": {
+    "/assets/pkd/pkd/lib/api.js": "/assets/pkd/pkd/lib/api.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/lib/dom.js": "/assets/pkd/pkd/lib/dom.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/lib/format.js": "/assets/pkd/pkd/lib/format.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/lib/router.js": "/assets/pkd/pkd/lib/router.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/lib/store.js": "/assets/pkd/pkd/lib/store.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/components/banner.js": "/assets/pkd/pkd/components/banner.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/components/bottom-nav.js": "/assets/pkd/pkd/components/bottom-nav.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/components/chart.js": "/assets/pkd/pkd/components/chart.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/components/data-table.js": "/assets/pkd/pkd/components/data-table.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/components/empty-state.js": "/assets/pkd/pkd/components/empty-state.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/components/loading.js": "/assets/pkd/pkd/components/loading.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/components/modal.js": "/assets/pkd/pkd/components/modal.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/components/season-picker.js": "/assets/pkd/pkd/components/season-picker.js?v={{ kd_v }}",
+    "/assets/pkd/pkd/components/toast.js": "/assets/pkd/pkd/components/toast.js?v={{ kd_v }}"
+  }
+}
+</script>
+
+<script>
+    // Context server-side cho SPA đọc (không gọi thêm API để biết mình là ai).
+    window.PKD_CONTEXT = {
+        user: {{ user|tojson }},
+        userFirstName: {{ user_first_name|tojson }},
+        userFullName: {{ user_full_name|tojson }},
+        authorized: {{ (authorized or 0)|tojson }},
+        baseUrl: "{{ frappe.utils.get_url() }}",
+        csrfToken: "{{ frappe.session.csrf_token if frappe.session.csrf_token else '' }}",
+        // Đổi mỗi lần tải trang (server-rendered) → cache-bust view module lazy-load.
+        assetVersion: {{ kd_v | tojson }}
+    };
+</script>
+{% endblock %}
+
+{% block page_content %}
+{% if not authorized %}
+<div class="kd-app kd-spring">
+    <div class="kd-empty" style="min-height:70vh;">
+        <div class="kd-empty-icon">🔒</div>
+        <div class="kd-empty-title">Không có quyền truy cập</div>
+        <div class="kd-text-sm">Trang này chỉ dành cho Phòng Kinh doanh. Liên hệ quản trị để được cấp quyền.</div>
+    </div>
+</div>
+{% else %}
+<div id="kd-app" class="kd-app kd-spring">
+    <!-- Header (sticky) -->
+    <header class="kd-header" id="kd-header">
+        <div class="kd-header-inner">
+            <button class="kd-icon-btn" id="kd-btn-back" type="button" aria-label="Quay lại" hidden>
+                <i class="fas fa-arrow-left"></i>
+            </button>
+            <h1 class="kd-header-title" id="kd-header-title">Tổng quan</h1>
+            <div class="kd-header-actions">
+                <button class="kd-icon-btn" id="kd-btn-refresh" type="button" aria-label="Làm mới">
+                    <i class="fas fa-sync-alt"></i>
+                </button>
+                <button class="kd-icon-btn" id="kd-btn-season" type="button" aria-label="Đổi mùa">
+                    <span class="kd-season-icon">🌸</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main view container — swapped by router -->
+    <main class="kd-main" id="kd-view"></main>
+
+    <!-- Bottom navigation (5 slot mobile) -->
+    <nav class="kd-bottom-nav" id="kd-bottom-nav">
+        <a href="#/" class="kd-nav-item" data-route="/">
+            <i class="fas fa-house"></i><span>Tổng quan</span>
+        </a>
+        <a href="#/npp" class="kd-nav-item" data-route="/npp">
+            <i class="fas fa-boxes-stacked"></i><span>NPP</span>
+        </a>
+        <a href="#/mt" class="kd-nav-item" data-route="/mt">
+            <i class="fas fa-store"></i><span>MT</span>
+        </a>
+        <a href="#/dulich" class="kd-nav-item" data-route="/dulich">
+            <i class="fas fa-suitcase-rolling"></i><span>Du lịch</span>
+        </a>
+        <a href="#/them" class="kd-nav-item" data-route="/them">
+            <i class="fas fa-bars"></i><span>Thêm</span>
+        </a>
+    </nav>
+
+    <!-- Mount points for global UI -->
+    <div id="kd-toast-mount" class="kd-toast-mount"></div>
+    <div id="kd-modal-mount" class="kd-modal-mount"></div>
+    <div id="kd-loading-mount" class="kd-loading-mount" hidden>
+        <div class="kd-loading-spinner"></div>
+        <div class="kd-loading-text">Đang xử lý...</div>
+    </div>
+</div>
+
+<script type="module" src="/assets/pkd/pkd/shell.js?v={{ kd_v }}"></script>
+{% endif %}
+{% endblock %}
