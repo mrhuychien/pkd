@@ -1,0 +1,189 @@
+{
+ "actions": [],
+ "creation": "2026-01-01 00:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "kenh_section",
+  "kenh_npp",
+  "kenh_mt",
+  "kenh_dulich",
+  "segment_section",
+  "nguong_tang_truong",
+  "nguong_suy_giam",
+  "ngay_ngu_dong",
+  "ngay_mat",
+  "column_break_segment",
+  "cua_so_hoat_dong",
+  "he_so_qua_nhip",
+  "sku_toi_thieu",
+  "mt_section",
+  "mt_ngay_im_lang",
+  "mt_trailing_thang",
+  "mt_addr_nguong_pct",
+  "hang_section",
+  "hang_a_vnd",
+  "hang_b_vnd",
+  "tet_section",
+  "tet_cua_so_ngay"
+ ],
+ "fields": [
+  {
+   "fieldname": "kenh_section",
+   "fieldtype": "Section Break",
+   "label": "Kênh (Customer Group root)"
+  },
+  {
+   "fieldname": "kenh_npp",
+   "fieldtype": "Link",
+   "label": "Nhóm KH kênh NPP",
+   "options": "Customer Group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "kenh_mt",
+   "fieldtype": "Link",
+   "label": "Nhóm KH kênh MT",
+   "options": "Customer Group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "kenh_dulich",
+   "fieldtype": "Link",
+   "label": "Nhóm KH kênh Du lịch",
+   "options": "Customer Group",
+   "reqd": 1
+  },
+  {
+   "fieldname": "segment_section",
+   "fieldtype": "Section Break",
+   "label": "Ngưỡng segment & vòng đời khách"
+  },
+  {
+   "default": "1.2",
+   "fieldname": "nguong_tang_truong",
+   "fieldtype": "Float",
+   "label": "Ngưỡng segment Tăng trưởng (rev90/prev90)"
+  },
+  {
+   "default": "0.8",
+   "fieldname": "nguong_suy_giam",
+   "fieldtype": "Float",
+   "label": "Ngưỡng segment Suy giảm (rev90/prev90)"
+  },
+  {
+   "default": "30",
+   "fieldname": "ngay_ngu_dong",
+   "fieldtype": "Int",
+   "label": "Số ngày → Ngủ đông"
+  },
+  {
+   "default": "90",
+   "fieldname": "ngay_mat",
+   "fieldtype": "Int",
+   "label": "Số ngày → Mất"
+  },
+  {
+   "fieldname": "column_break_segment",
+   "fieldtype": "Column Break"
+  },
+  {
+   "default": "90",
+   "fieldname": "cua_so_hoat_dong",
+   "fieldtype": "Int",
+   "label": "Cửa sổ \"khách hoạt động\" (ngày)"
+  },
+  {
+   "default": "1.5",
+   "fieldname": "he_so_qua_nhip",
+   "fieldtype": "Float",
+   "label": "Hệ số quá nhịp tái đặt"
+  },
+  {
+   "default": "3",
+   "fieldname": "sku_toi_thieu",
+   "fieldtype": "Int",
+   "label": "Số nhóm hàng tối thiểu (SKU mix NPP)"
+  },
+  {
+   "fieldname": "mt_section",
+   "fieldtype": "Section Break",
+   "label": "Kênh MT"
+  },
+  {
+   "default": "30",
+   "fieldname": "mt_ngay_im_lang",
+   "fieldtype": "Int",
+   "label": "MT: N ngày không đơn → cảnh báo"
+  },
+  {
+   "default": "3",
+   "fieldname": "mt_trailing_thang",
+   "fieldtype": "Int",
+   "label": "MT: số tháng trailing mặc định"
+  },
+  {
+   "default": "80",
+   "fieldname": "mt_addr_nguong_pct",
+   "fieldtype": "Percent",
+   "label": "Ngưỡng % HĐ MT có shipping_address để bật bảng siêu thị"
+  },
+  {
+   "fieldname": "hang_section",
+   "fieldtype": "Section Break",
+   "label": "Hạng khách (DS bình quân tháng)"
+  },
+  {
+   "default": "200000000",
+   "fieldname": "hang_a_vnd",
+   "fieldtype": "Currency",
+   "label": "Ngưỡng hạng A (VND)"
+  },
+  {
+   "default": "100000000",
+   "fieldname": "hang_b_vnd",
+   "fieldtype": "Currency",
+   "label": "Ngưỡng hạng B (VND)"
+  },
+  {
+   "fieldname": "tet_section",
+   "fieldtype": "Section Break",
+   "label": "Tết"
+  },
+  {
+   "default": "60",
+   "fieldname": "tet_cua_so_ngay",
+   "fieldtype": "Int",
+   "label": "Cửa sổ Tết (D-N → D-0)"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2026-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "PKD",
+ "name": "PKD Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "read": 1,
+   "role": "Sales Dashboard"
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}
