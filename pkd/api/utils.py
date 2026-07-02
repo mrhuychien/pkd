@@ -4,7 +4,7 @@
 Nguyên tắc số liệu (frappe-sales-analytics), in vào code:
 - Doanh số/sản lượng: docstatus=1 + loại is_opening.  Công nợ: GIỮ opening.
 - So kỳ period-aligned (giữ nguyên số ngày đã trôi).
-- CẤM margin/COGS: KHÔNG method nào query incoming_rate/giá vốn (blueprint QĐ #3).
+- CẤM margin/COGS: KHÔNG method nào query giá vốn (blueprint QĐ #3) — loại từ tầng SQL.
 - Attribution doanh số dùng si.customer_group (snapshot trên hoá đơn), KHÔNG join
   Customer hiện tại → lịch sử ổn định khi khách đổi nhóm.
 - Mọi tỷ lệ guard chia 0 → None (FE hiện "—").
