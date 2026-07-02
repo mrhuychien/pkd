@@ -31,9 +31,9 @@ const ASSET_V = encodeURIComponent(window.PKD_CONTEXT?.assetVersion || '');
 const withV = (path) => (ASSET_V ? `${path}?v=${ASSET_V}` : path);
 const VIEW_MODULES = {
     '/'         : () => import(withV('./views/tongquan.js')),
-    '/npp'      : () => import(withV('./views/_soon.js')),   // P1
-    '/mt'       : () => import(withV('./views/_soon.js')),   // P1
-    '/dulich'   : () => import(withV('./views/_soon.js')),   // P1
+    '/npp'      : () => import(withV('./views/npp.js')),
+    '/mt'       : () => import(withV('./views/mt.js')),
+    '/dulich'   : () => import(withV('./views/dulich.js')),
     '/them'     : () => import(withV('./views/them.js')),
     '/trungbay' : () => import(withV('./views/_soon.js')),   // P2
     '/tet'      : () => import(withV('./views/_soon.js')),   // P2

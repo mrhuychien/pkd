@@ -156,6 +156,45 @@ def customers_in_groups(groups: list[str]) -> list[dict]:
 	)
 
 
+def revenue_by_customer(groups: list[str], start, end) -> dict:
+	"""{customer: doanh số grand_total} trong [start,end] (loại opening)."""
+	if not groups:
+		return {}
+	rows = frappe.db.sql(
+		"""
+		SELECT si.customer AS cust, SUM(si.grand_total) AS amt
+		FROM `tabSales Invoice` si
+		WHERE si.docstatus = 1
+		  AND IFNULL(si.is_opening, 'No') != 'Yes'
+		  AND si.posting_date BETWEEN %(s)s AND %(e)s
+		  AND si.customer_group IN %(g)s
+		GROUP BY si.customer
+		""",
+		{"s": start, "e": end, "g": tuple(groups)},
+		as_dict=True,
+	)
+	return {r.cust: flt(r.amt) for r in rows}
+
+
+def active_customers(groups: list[str], start, end) -> set:
+	"""Tập customer có ít nhất 1 đơn (loại opening) trong [start,end]."""
+	if not groups:
+		return set()
+	rows = frappe.db.sql(
+		"""
+		SELECT DISTINCT si.customer AS cust
+		FROM `tabSales Invoice` si
+		WHERE si.docstatus = 1
+		  AND IFNULL(si.is_opening, 'No') != 'Yes'
+		  AND si.posting_date BETWEEN %(s)s AND %(e)s
+		  AND si.customer_group IN %(g)s
+		""",
+		{"s": start, "e": end, "g": tuple(groups)},
+		as_dict=True,
+	)
+	return {r.cust for r in rows}
+
+
 def customer_names(names: list[str]) -> dict:
 	"""{customer: customer_name} — 1 query IN, None-safe."""
 	names = [n for n in set(names) if n]
