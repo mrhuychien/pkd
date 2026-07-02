@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Node (nếu sau này có dev tools)
+node_modules/
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Frappe build artifacts
+*.min.css
+*.min.js
+
+# Logs
+*.log
+
+# Env
+.env
+.env.local
