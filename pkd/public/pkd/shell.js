@@ -37,7 +37,7 @@ const VIEW_MODULES = {
     '/them'     : () => import(withV('./views/them.js')),
     '/trungbay' : () => import(withV('./views/_soon.js')),   // P2
     '/tet'      : () => import(withV('./views/_soon.js')),   // P2
-    '/chitieu'  : () => import(withV('./views/_soon.js')),   // P1
+    '/chitieu'  : () => import(withV('./views/chitieu.js')),
     '/khampha'  : () => import(withV('./views/khampha.js')),
     '/khach'    : () => import(withV('./views/_soon.js')),   // P2
 };
