@@ -35,11 +35,11 @@ const VIEW_MODULES = {
     '/mt'       : () => import(withV('./views/mt.js')),
     '/dulich'   : () => import(withV('./views/dulich.js')),
     '/them'     : () => import(withV('./views/them.js')),
-    '/trungbay' : () => import(withV('./views/_soon.js')),   // P2
-    '/tet'      : () => import(withV('./views/_soon.js')),   // P2
+    '/trungbay' : () => import(withV('./views/trungbay.js')),
+    '/tet'      : () => import(withV('./views/tet.js')),
     '/chitieu'  : () => import(withV('./views/chitieu.js')),
     '/khampha'  : () => import(withV('./views/khampha.js')),
-    '/khach'    : () => import(withV('./views/_soon.js')),   // P2
+    '/khach'    : () => import(withV('./views/khach.js')),
 };
 
 const TITLES = {
