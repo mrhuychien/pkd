@@ -21,3 +21,9 @@ class PKDSettings(Document):
 		# Ngưỡng hạng A phải > hạng B để phân hạng đúng thứ tự.
 		if self.hang_a_vnd and self.hang_b_vnd and self.hang_a_vnd <= self.hang_b_vnd:
 			frappe.throw(_("Ngưỡng hạng A phải lớn hơn ngưỡng hạng B."))
+
+	def on_update(self):
+		# 3 root kênh có thể vừa đổi → xoá cache channel_map (utils) để không stale.
+		from pkd.api.utils import clear_channel_cache
+
+		clear_channel_cache()
