@@ -3,7 +3,7 @@ import { formatVNDShort, formatNumber, escapeHtml } from '../lib/format.js';
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
 import { emptyState } from '../components/empty-state.js';
-import { dataTable } from '../components/data-table.js';
+import { pagedTable } from '../components/data-table.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
 
 const charts = chartRegistry();
@@ -68,7 +68,7 @@ function renderBody(d) {
 
         ${mt ? `<div class="kd-card kd-mt-3"><h3 class="kd-font-bold kd-mb-2">Chuỗi MT trong cửa sổ Tết — đã đơn ${mt.ordered_count} · chưa ${mt.pending_count}</h3>
             <h4 class="kd-font-bold kd-text-sm kd-mt-2">Chưa có đơn (${mt.pending_count})</h4>
-            ${(mt.pending || []).length ? dataTable({
+            ${(mt.pending || []).length ? pagedTable({
                 columns: [{ key: 'customer_name', label: 'Chuỗi', render: (r) => `<a href="#${r.route}" style="color:var(--kd-primary);font-weight:600;">${escapeHtml(r.customer_name)}</a>` }],
                 rows: mt.pending,
             }) : '<div class="kd-text-sm kd-text-muted">Mọi chuỗi đã có đơn ✓</div>'}</div>` : ''}

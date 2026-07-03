@@ -2,6 +2,7 @@ import { html } from '../lib/dom.js';
 import { formatVNDShort, escapeHtml } from '../lib/format.js';
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
+import { paged } from '../components/data-table.js';
 import { qlNav, channelOf, CHANNEL_LABEL, CHANNEL_NOUN } from '../components/ql-nav.js';
 
 // ─── Cần xử lý / Action Center theo kênh (port từ npp quan-ly-alert) ─────────
@@ -50,10 +51,13 @@ function renderRows(rows) {
         </div>
         <div class="kd-card kd-mt-3">
             <p class="kd-text-sm kd-text-muted">Sắp theo <strong>giá trị rủi ro</strong> (không theo số lượng) — xử lý từ trên xuống.</p>
-            <div style="overflow-x:auto;"><table class="kd-table kd-mt-2">
+            ${paged({
+                rows,
+                pageSize: 10,
+                render: (slice) => html`<div style="overflow-x:auto;"><table class="kd-table kd-mt-2">
                 <thead><tr><th>${noun}</th><th>Tỉnh</th><th>Phân khúc</th><th>Sức khỏe</th><th class="kd-text-end">Giá trị rủi ro</th><th>Hành động</th><th></th></tr></thead>
                 <tbody>
-                    ${rows.map((r) => html`<tr>
+                    ${slice.map((r) => html`<tr>
                         <td data-label="${noun}"><strong>${escapeHtml(r.customer_name)}</strong>${r.overdue > 0 ? ` <span class="kd-text-sm kd-text-muted">(nợ quá hạn ${formatVNDShort(r.overdue)})</span>` : ''}</td>
                         <td data-label="Tỉnh">${escapeHtml(r.territory || '—')}</td>
                         <td data-label="Phân khúc"><span class="kd-badge kd-badge-${SEG_BADGE[r.segment] || 'muted'}">${escapeHtml(r.segment)}</span></td>
@@ -63,7 +67,8 @@ function renderRows(rows) {
                         <td><a href="#/ql-khach?k=${_k}&c=${encodeURIComponent(r.customer)}" class="kd-text-sm kd-link">Mở</a></td>
                     </tr>`).join('')}
                 </tbody>
-            </table></div>
+            </table></div>`,
+            })}
         </div>
     `;
 }

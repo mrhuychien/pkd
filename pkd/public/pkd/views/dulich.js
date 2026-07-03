@@ -3,7 +3,7 @@ import { formatVNDShort, formatNumber, escapeHtml } from '../lib/format.js';
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
 import { showToast } from '../components/toast.js';
-import { dataTable } from '../components/data-table.js';
+import { pagedTable } from '../components/data-table.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
 
 const charts = chartRegistry();
@@ -35,7 +35,7 @@ function renderBody(d) {
     const sor = d.second_order_rate;
     const territoryBlock = d.territory_clean
         ? `<div class="kd-card kd-mt-3"><h3 class="kd-font-bold kd-mb-2">Doanh số theo tỉnh/khu vực (12 tháng)</h3>
-             ${dataTable({
+             ${pagedTable({
                  columns: [
                      { key: 'territory', label: 'Tỉnh/Khu vực', render: (r) => escapeHtml(r.territory) },
                      { key: 'amount', label: 'Doanh số', render: (r) => formatVNDShort(r.amount) },
@@ -65,7 +65,7 @@ function renderBody(d) {
         ${territoryBlock}
 
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold kd-mb-2">Khách quen im ắng</h3>
-            ${(d.quiet_regulars || []).length ? dataTable({
+            ${(d.quiet_regulars || []).length ? pagedTable({
                 columns: [
                     { key: 'customer_name', label: 'Khách', render: (r) => `<a href="#/khach/${escapeHtml(r.customer)}" style="color:var(--kd-primary);font-weight:600;">${escapeHtml(r.customer_name)}</a>` },
                     { key: 'days_since', label: 'Ngày từ đơn cuối', render: (r) => `${formatNumber(r.days_since)}d` },
@@ -74,7 +74,7 @@ function renderBody(d) {
             }) : '<div class="kd-text-sm kd-text-muted">Không có khách quen im ắng.</div>'}</div>
 
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold kd-mb-2">Khách mới trong tháng (${nc.count || 0})</h3>
-            ${(nc.list || []).length ? dataTable({
+            ${(nc.list || []).length ? pagedTable({
                 columns: [{ key: 'customer_name', label: 'Khách', render: (r) => `<a href="#/khach/${escapeHtml(r.customer)}" style="color:var(--kd-primary);font-weight:600;">${escapeHtml(r.customer_name)}</a>` }],
                 rows: nc.list,
             }) : '<div class="kd-text-sm kd-text-muted">Chưa có khách mới tháng này.</div>'}</div>

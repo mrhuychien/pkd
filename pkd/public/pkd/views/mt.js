@@ -3,7 +3,7 @@ import { formatVNDShort, formatNumber, formatDate, escapeHtml } from '../lib/for
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
 import { showToast } from '../components/toast.js';
-import { dataTable } from '../components/data-table.js';
+import { pagedTable } from '../components/data-table.js';
 
 let _data = null;
 
@@ -47,7 +47,7 @@ function renderBody(d) {
         ${hygieneWarn}
         <div class="kd-card kd-mt-3">
             <h3 class="kd-font-bold kd-mb-2">Chuỗi siêu thị <span class="kd-text-sm kd-text-muted">(${d.meta?.note || ''})</span></h3>
-            ${dataTable({
+            ${pagedTable({
                 columns: [
                     { key: 'customer_name', label: 'Chuỗi', render: chainCell },
                     { key: 'trailing_3m', label: 'Trailing 3T', render: (r) => `<b>${formatVNDShort(r.trailing_3m)}</b>` },
@@ -63,7 +63,7 @@ function renderBody(d) {
         <div id="kd-mt-outlets" class="kd-mt-3"></div>
 
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold kd-mb-2">Im lặng ≥ ${d.silence_days || 30} ngày (${silent.length})</h3>
-            ${silent.length ? dataTable({
+            ${silent.length ? pagedTable({
                 columns: [
                     { key: 'customer_name', label: 'Chuỗi', render: (r) => `<a href="#/khach/${r.customer}" style="color:var(--kd-primary);font-weight:600;">${escapeHtml(r.customer_name)}</a>` },
                     { key: 'days_silent', label: 'Ngày im lặng', render: (r) => `${formatNumber(r.days_silent)}d` },
@@ -99,7 +99,7 @@ async function loadOutlets(customer, name) {
                     <h3 class="kd-font-bold">🏬 Siêu thị của: ${escapeHtml(name)}</h3>
                     <a href="#/ql-khach?k=mt&c=${encodeURIComponent(customer)}" class="kd-link kd-text-sm">Phân tích sâu từng siêu thị →</a>
                 </div>
-                ${outlets.length ? dataTable({
+                ${outlets.length ? pagedTable({
                     columns: [
                         { key: 'shipping_address_name', label: 'Siêu thị', render: (r) => escapeHtml(r.shipping_address_name) },
                         { key: 'trailing_3m', label: 'Trailing 3T', render: (r) => formatVNDShort(r.trailing_3m) },

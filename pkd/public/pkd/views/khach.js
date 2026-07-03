@@ -2,7 +2,7 @@ import { html } from '../lib/dom.js';
 import { formatVNDShort, formatNumber, formatDate, escapeHtml } from '../lib/format.js';
 import * as api from '../lib/api.js';
 import { showToast } from '../components/toast.js';
-import { dataTable } from '../components/data-table.js';
+import { pagedTable } from '../components/data-table.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
 
 const charts = chartRegistry();
@@ -64,7 +64,7 @@ function renderBody(container, d) {
             <div class="kd-chart-wrap"><canvas id="kd-kh-12m"></canvas></div></div>
 
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold kd-mb-2">Cơ cấu nhóm hàng (12 tháng)</h3>
-            ${(d.top_sku_mix || []).length ? dataTable({
+            ${(d.top_sku_mix || []).length ? pagedTable({
                 columns: [
                     { key: 'item_group', label: 'Nhóm hàng', render: (r) => escapeHtml(r.item_group || '(trống)') },
                     { key: 'amount', label: 'Doanh số', render: (r) => formatVNDShort(r.amount) },
@@ -74,7 +74,7 @@ function renderBody(container, d) {
 
         ${p.channel === 'mt' && (d.outlets || []).length ? `
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold kd-mb-2">🏬 Siêu thị (12 tháng)</h3>
-            ${dataTable({
+            ${pagedTable({
                 columns: [
                     { key: 'shipping_address_name', label: 'Siêu thị', render: (r) => escapeHtml(r.shipping_address_name) },
                     { key: 'amount', label: 'Doanh số', render: (r) => formatVNDShort(r.amount) },
@@ -87,7 +87,7 @@ function renderBody(container, d) {
             <div class="kd-text-sm">Tham gia: <b>${formatNumber(disp.participations)}</b> · Đã duyệt: <b>${formatNumber(disp.approved)}</b> · Điểm: <b>${formatNumber(disp.distinct_points)}</b></div></div>` : ''}
 
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold kd-mb-2">20 hoá đơn gần nhất</h3>
-            ${dataTable({
+            ${pagedTable({
                 columns: [
                     { key: 'posting_date', label: 'Ngày', render: (r) => formatDate(r.posting_date) },
                     { key: 'name', label: 'Số HĐ', render: (r) => escapeHtml(r.name) },

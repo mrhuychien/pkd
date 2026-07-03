@@ -3,7 +3,7 @@ import { formatVNDShort, formatNumber, escapeHtml } from '../lib/format.js';
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
 import { emptyState } from '../components/empty-state.js';
-import { dataTable } from '../components/data-table.js';
+import { pagedTable } from '../components/data-table.js';
 
 const STATUS_BADGE = { 'Đang chạy': 'kd-badge-success', 'Nháp': 'kd-badge-muted', 'Kết thúc': 'kd-badge-warning' };
 
@@ -53,7 +53,7 @@ export async function render({ container }) {
         <div class="kd-mt-3">${programCards}</div>
         <div class="kd-card kd-mt-3">
             <h3 class="kd-font-bold kd-mb-2">Top NPP trưng bày <span class="kd-text-sm kd-text-muted">(doanh số: tham khảo)</span></h3>
-            ${dataTable({
+            ${pagedTable({
                 columns: [
                     { key: 'customer_name', label: 'NPP', render: (r) => `<a href="#${r.route}" style="color:var(--kd-primary);font-weight:600;">${escapeHtml(r.customer_name)}</a>` },
                     { key: 'approved', label: 'Lượt duyệt', render: (r) => formatNumber(r.approved) },
@@ -65,7 +65,7 @@ export async function render({ container }) {
         </div>
         <div class="kd-card kd-mt-3">
             <h3 class="kd-font-bold kd-mb-2">Top NVBH</h3>
-            ${dataTable({
+            ${pagedTable({
                 columns: [
                     { key: 'full_name', label: 'NVBH', render: (r) => escapeHtml(r.full_name) },
                     { key: 'approved', label: 'Lượt duyệt', render: (r) => formatNumber(r.approved) },

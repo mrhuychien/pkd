@@ -2,6 +2,7 @@ import { html } from '../lib/dom.js';
 import { formatCurrency, formatNumber, formatVNDShort, formatDate, escapeHtml } from '../lib/format.js';
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
+import { paged } from '../components/data-table.js';
 import { qlNav, channelOf, CHANNEL_LABEL, CHANNEL_NOUN } from '../components/ql-nav.js';
 import { salesMatrixHtml } from '../components/sales-matrix.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
@@ -116,8 +117,8 @@ function renderOutlets(host, customer, d) {
              <div class="kd-text-sm">Phần này không phân bổ được về siêu thị nào — <a href="javascript:void(0)" class="kd-link" id="kd-ot-noaddr">soi bucket thiếu địa chỉ →</a></div></div>`
         : '';
 
-    const rows = outlets.map((o, i) => `<tr>
-        <td data-label="Siêu thị"><strong style="color:var(--kd-text-muted);">${i + 1}.</strong>
+    const outletRow = (o, idx) => `<tr>
+        <td data-label="Siêu thị"><strong style="color:var(--kd-text-muted);">${idx + 1}.</strong>
             <a href="javascript:void(0)" class="kd-link kd-ot-drill" data-o="${escapeHtml(o.outlet)}">${escapeHtml(o.title)}</a>
             ${o.silent ? ' <span class="kd-badge kd-badge-warning">im lặng</span>' : ''}</td>
         <td data-label="Doanh số" class="kd-text-end"><strong>${formatVNDShort(o.revenue)}</strong>
@@ -128,7 +129,17 @@ function renderOutlets(host, customer, d) {
         <td data-label="Đơn" class="kd-text-end">${formatNumber(o.orders)}<div class="kd-text-sm kd-text-muted">TB ${formatVNDShort(o.aov)}</div></td>
         <td data-label="Nhóm" class="kd-text-end">${o.groups_bought}</td>
         <td data-label="Đơn cuối">${o.last_invoice ? formatDate(o.last_invoice) : '—'}${o.days_since != null ? `<div class="kd-text-sm kd-text-muted">${o.days_since}d trước${o.avg_cycle ? ' · nhịp ~' + o.avg_cycle + 'd' : ''}</div>` : ''}</td>
-    </tr>`).join('');
+    </tr>`;
+    const outletTable = outlets.length ? paged({
+        rows: outlets,
+        pageSize: 10,
+        render: (slice, start) => `<div style="overflow-x:auto;"><table class="kd-table">
+                <thead><tr><th>Siêu thị</th><th class="kd-text-end">Doanh số</th><th class="kd-text-end">vs kỳ trước</th><th class="kd-text-end">YoY</th><th class="kd-text-end">Thùng</th><th class="kd-text-end">Đơn</th><th class="kd-text-end">Nhóm</th><th>Đơn cuối</th></tr></thead>
+                <tbody>${slice.map((o, i) => outletRow(o, start + i)).join('')}</tbody>
+            </table></div>`,
+        onDraw: (el) => el.querySelectorAll('.kd-ot-drill').forEach((a) =>
+            a.addEventListener('click', () => drillOutlet(customer, a.dataset.o))),
+    }) : '<div class="kd-text-center kd-text-muted" style="padding:1rem;">Chưa có siêu thị nào phát sinh đơn trong kỳ</div>';
 
     host.innerHTML = html`
         <h3 class="kd-font-bold kd-mt-3">🏬 Siêu thị thuộc chuỗi (${monthsLbl})</h3>
@@ -145,10 +156,7 @@ function renderOutlets(host, customer, d) {
         </div>
         ${hygieneNote}
         <div class="kd-card kd-mt-2">
-            <div style="overflow-x:auto;"><table class="kd-table">
-                <thead><tr><th>Siêu thị</th><th class="kd-text-end">Doanh số</th><th class="kd-text-end">vs kỳ trước</th><th class="kd-text-end">YoY</th><th class="kd-text-end">Thùng</th><th class="kd-text-end">Đơn</th><th class="kd-text-end">Nhóm</th><th>Đơn cuối</th></tr></thead>
-                <tbody>${rows || '<tr><td colspan="8" class="kd-text-center kd-text-muted">Chưa có siêu thị nào phát sinh đơn trong kỳ</td></tr>'}</tbody>
-            </table></div>
+            ${outletTable}
             <p class="kd-text-sm kd-text-muted kd-mt-2">So kỳ cùng số ngày (period-aligned). Bấm tên siêu thị để soi nhóm hàng, xu hướng, hoá đơn.</p>
         </div>
         <div id="kd-ot-detail" class="kd-mt-2"></div>
@@ -165,8 +173,7 @@ function renderOutlets(host, customer, d) {
         totals: { monthly: t.monthly || {}, grand_total: t.revenue || 0 },
     }, { showKpis: false, title: 'Doanh số từng siêu thị theo tháng', showMeta: true, detailHref: null });
 
-    host.querySelectorAll('.kd-ot-drill').forEach((a) =>
-        a.addEventListener('click', () => drillOutlet(customer, a.dataset.o)));
+    // .kd-ot-drill đã bind trong onDraw của paged() (re-bind mỗi lần chuyển trang).
     document.getElementById('kd-ot-noaddr')?.addEventListener('click', () => drillOutlet(customer, d.no_addr?.outlet || '(không ghi địa chỉ)'));
 }
 
@@ -291,24 +298,32 @@ function renderAll(d) {
 
         <!-- Lịch thanh toán & các khoản thu -->
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold">Lịch thanh toán (hoá đơn còn nợ)</h3>
-            ${(f.open_invoices && f.open_invoices.length) ? html`<div style="overflow-x:auto;"><table class="kd-table kd-mt-2">
+            ${(f.open_invoices && f.open_invoices.length) ? paged({
+                rows: f.open_invoices,
+                pageSize: 10,
+                render: (slice) => html`<div style="overflow-x:auto;"><table class="kd-table kd-mt-2">
                 <thead><tr><th>Hoá đơn</th><th>Ngày</th><th>Hạn TT</th><th class="kd-text-end">Còn nợ</th><th class="kd-text-end">Quá hạn</th></tr></thead>
-                <tbody>${f.open_invoices.map((r) => `<tr>
+                <tbody>${slice.map((r) => `<tr>
                     <td data-label="Hoá đơn">${escapeHtml(r.invoice)}</td>
                     <td data-label="Ngày">${formatDate(r.posting_date)}</td>
                     <td data-label="Hạn TT">${r.due_date ? formatDate(r.due_date) : '—'}</td>
                     <td data-label="Còn nợ" class="kd-text-end">${formatCurrency(r.outstanding)}</td>
                     <td data-label="Quá hạn" class="kd-text-end">${r.days_overdue > 0 ? `<strong style="color:var(--kd-danger);">${r.days_overdue} ngày</strong>` : '<span class="kd-text-muted">trong hạn</span>'}</td>
-                </tr>`).join('')}</tbody></table></div>` : '<p class="kd-text-muted kd-mt-2">🎉 Không còn hoá đơn nợ.</p>'}
+                </tr>`).join('')}</tbody></table></div>`,
+            }) : '<p class="kd-text-muted kd-mt-2">🎉 Không còn hoá đơn nợ.</p>'}
         </div>
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold">Các khoản đã thanh toán (gần đây)</h3>
-            ${(f.payments && f.payments.length) ? html`<table class="kd-table kd-mt-2">
+            ${(f.payments && f.payments.length) ? paged({
+                rows: f.payments,
+                pageSize: 10,
+                render: (slice) => html`<table class="kd-table kd-mt-2">
                 <thead><tr><th>Phiếu thu</th><th>Ngày</th><th class="kd-text-end">Số tiền</th></tr></thead>
-                <tbody>${f.payments.map((r) => `<tr>
+                <tbody>${slice.map((r) => `<tr>
                     <td data-label="Phiếu thu">${escapeHtml(r.name)}</td>
                     <td data-label="Ngày">${formatDate(r.posting_date)}</td>
                     <td data-label="Số tiền" class="kd-text-end" style="color:var(--kd-success);font-weight:700;">${formatCurrency(r.amount)}</td>
-                </tr>`).join('')}</tbody></table>` : '<p class="kd-text-muted kd-mt-2">Chưa ghi nhận khoản thu (Payment Entry) nào.</p>'}
+                </tr>`).join('')}</tbody></table>`,
+            }) : '<p class="kd-text-muted kd-mt-2">Chưa ghi nhận khoản thu (Payment Entry) nào.</p>'}
         </div>
 
         <!-- Nhóm hàng -->
@@ -343,18 +358,22 @@ function renderAll(d) {
 
         <!-- Sản phẩm -->
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold">Sản phẩm (top theo doanh số)</h3>
-            <div style="overflow-x:auto;"><table class="kd-table kd-mt-2">
+            ${(d.products || []).length ? paged({
+                rows: d.products,
+                pageSize: 10,
+                render: (slice) => html`<div style="overflow-x:auto;"><table class="kd-table kd-mt-2">
                 <thead><tr><th>SKU</th><th>Nhóm</th><th class="kd-text-end">Doanh số</th><th class="kd-text-end">% DS</th><th class="kd-text-end">+/- kỳ trước</th></tr></thead>
                 <tbody>
-                    ${(d.products || []).map((r) => html`<tr>
+                    ${slice.map((r) => html`<tr>
                         <td data-label="SKU"><strong>${escapeHtml(r.item_name)}</strong><div class="kd-text-sm kd-text-muted">${escapeHtml(r.item_code)} · ${formatNumber(r.qty)} thùng</div></td>
                         <td data-label="Nhóm">${escapeHtml(r.item_group || '—')}</td>
                         <td data-label="Doanh số" class="kd-text-end">${formatCurrency(r.revenue)}</td>
                         <td data-label="% DS" class="kd-text-end">${(r.pct_of_total || 0).toFixed(1)}%</td>
                         <td data-label="+/-" class="kd-text-end">${pct(r.growth_pct)}</td>
-                    </tr>`).join('') || '<tr><td colspan="5" class="kd-text-center kd-text-muted">Chưa có doanh số trong kỳ</td></tr>'}
+                    </tr>`).join('')}
                 </tbody>
-            </table></div>
+            </table></div>`,
+            }) : '<p class="kd-text-muted kd-mt-2">Chưa có doanh số trong kỳ.</p>'}
         </div>
 
         <!-- MT: chi tiết từng siêu thị của chuỗi (đổ bởi loadChainOutlets) -->

@@ -4,6 +4,7 @@ import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
 import { showToast } from '../components/toast.js';
 import { emptyState } from '../components/empty-state.js';
+import { paged } from '../components/data-table.js';
 import { qlNav, channelOf, CHANNEL_LABEL, CHANNEL_NOUN } from '../components/ql-nav.js';
 
 // ─── Mục tiêu doanh số THEO KHÁCH (port từ npp quan-ly-target, channel-aware) ─
@@ -13,6 +14,8 @@ import { qlNav, channelOf, CHANNEL_LABEL, CHANNEL_NOUN } from '../components/ql-
 let _k = 'npp';
 let _months = 1;
 let _pace = 0;
+let _rows = [];                 // toàn bộ dòng (mọi trang)
+const _pending = new Map();     // customer → giá trị đang nhập (chưa lưu) — sống sót khi chuyển trang
 
 /** Tô màu % đạt theo nhịp kỳ vọng: ≥ nhịp = xanh, ≥80% nhịp = vàng, còn lại đỏ. */
 function attBadge(pct) {
@@ -65,6 +68,7 @@ export async function render({ container, query }) {
 
 async function load(months) {
     _months = months;
+    _pending.clear();   // dữ liệu server mới → bỏ nháp cũ
     try {
         const d = await api.mgr.targets(_k, months);
         if (d.available === false) {
@@ -90,17 +94,27 @@ async function load(months) {
 }
 
 function renderTable(rows) {
+    _rows = rows || [];
     const root = document.getElementById('kd-tg2-table');
     const noun = CHANNEL_NOUN[_k];
-    root.innerHTML = html`
+    if (!_rows.length) { root.innerHTML = `<div class="kd-text-center kd-text-muted" style="padding:1rem;">Không có ${noun}</div>`; return; }
+    // Giá trị ô = bản nháp (_pending) nếu có, không thì giá trị server — nhờ vậy
+    // chuyển trang không mất dữ liệu đang nhập; "Lưu tất cả" gom nháp MỌI trang.
+    root.innerHTML = paged({
+        rows: _rows,
+        pageSize: 10,
+        render: (slice) => html`
         <div style="overflow-x:auto;"><table class="kd-table">
             <thead><tr><th>${noun}</th><th>Tỉnh</th><th>Mục tiêu/tháng</th><th>Gợi ý</th><th class="kd-text-end">Doanh số kỳ</th><th class="kd-text-end">% đạt</th></tr></thead>
             <tbody>
-                ${rows.map((r) => html`<tr>
-                    <td data-label="${noun}"><strong>${escapeHtml(r.customer_name)}</strong></td>
+                ${slice.map((r) => {
+                    const val = _pending.has(r.customer) ? _pending.get(r.customer) : (r.monthly_target || 0);
+                    const dirty = _pending.has(r.customer) && Number(_pending.get(r.customer)) !== (r.monthly_target || 0);
+                    return html`<tr>
+                    <td data-label="${noun}"><strong>${escapeHtml(r.customer_name)}</strong>${dirty ? ' <span class="kd-badge kd-badge-warning">nháp</span>' : ''}</td>
                     <td data-label="Tỉnh">${escapeHtml(r.territory || '—')}</td>
                     <td data-label="Mục tiêu/tháng" style="white-space:nowrap;">
-                        <input type="number" min="0" step="1000000" class="kd-tg2-input" data-c="${escapeHtml(r.customer)}" data-name="${escapeHtml((r.customer_name || '').toLowerCase().trim())}" data-orig="${r.monthly_target || 0}" data-sug="${r.suggested || 0}" value="${r.monthly_target || 0}"
+                        <input type="number" min="0" step="1000000" class="kd-tg2-input" data-c="${escapeHtml(r.customer)}" data-sug="${r.suggested || 0}" value="${val}"
                                style="width:130px;padding:6px 8px;border:1px solid var(--kd-border);border-radius:8px;background:var(--kd-surface);color:var(--kd-text);">
                         <button class="kd-tg2-save" data-c="${escapeHtml(r.customer)}" type="button" style="padding:6px 10px;font-size:.8rem;border:none;border-radius:8px;background:var(--kd-season-grad);color:#fff;font-weight:700;cursor:pointer;">Lưu</button>
                     </td>
@@ -109,37 +123,40 @@ function renderTable(rows) {
                     </td>
                     <td data-label="Doanh số" class="kd-text-end">${formatCurrency(r.revenue)}</td>
                     <td data-label="% đạt" class="kd-text-end">${attBadge(r.attainment_pct)}</td>
-                </tr>`).join('') || `<tr><td colspan="6" class="kd-text-center kd-text-muted">Không có ${noun}</td></tr>`}
+                </tr>`;
+                }).join('')}
             </tbody>
-        </table></div>
-    `;
-    root.querySelectorAll('.kd-tg2-save').forEach((b) => b.addEventListener('click', () => saveTarget(b.dataset.c, root)));
-    root.querySelectorAll('.kd-tg2-use').forEach((b) => b.addEventListener('click', () => {
-        const inp = root.querySelector(`.kd-tg2-input[data-c="${CSS.escape(b.dataset.c)}"]`);
-        if (inp) { inp.value = inp.dataset.sug || 0; inp.focus(); }
-    }));
-}
-
-/** Điền gợi ý (TB 3 tháng × 1.1) vào MỌI ô chưa có mục tiêu. */
-function fillSuggestions() {
-    const inputs = document.querySelectorAll('#kd-tg2-table .kd-tg2-input');
-    let n = 0;
-    inputs.forEach((inp) => {
-        const cur = parseFloat(inp.value) || 0;
-        const sug = parseFloat(inp.dataset.sug) || 0;
-        if (cur <= 0 && sug > 0) { inp.value = sug; n++; }
+        </table></div>`,
+        onDraw: (el) => {
+            el.querySelectorAll('.kd-tg2-input').forEach((inp) =>
+                inp.addEventListener('input', () => _pending.set(inp.dataset.c, parseFloat(inp.value) || 0)));
+            el.querySelectorAll('.kd-tg2-save').forEach((b) => b.addEventListener('click', () => saveTarget(b.dataset.c, el)));
+            el.querySelectorAll('.kd-tg2-use').forEach((b) => b.addEventListener('click', () => {
+                const inp = el.querySelector(`.kd-tg2-input[data-c="${CSS.escape(b.dataset.c)}"]`);
+                if (inp) { inp.value = inp.dataset.sug || 0; _pending.set(b.dataset.c, parseFloat(inp.value) || 0); inp.focus(); }
+            }));
+        },
     });
-    showToast(n ? `Đã điền gợi ý cho ${n} khách — kiểm tra rồi "Lưu tất cả"` : 'Tất cả đã có mục tiêu', n ? 'info' : 'success');
 }
 
-/** Lưu mọi ô có thay đổi so với giá trị đã tải (set_targets_bulk). */
+/** Điền gợi ý (TB 3 tháng × 1.1) vào MỌI dòng chưa có mục tiêu — TẤT CẢ các trang. */
+function fillSuggestions() {
+    let n = 0;
+    _rows.forEach((r) => {
+        const cur = _pending.has(r.customer) ? Number(_pending.get(r.customer)) : (r.monthly_target || 0);
+        if (cur <= 0 && (r.suggested || 0) > 0) { _pending.set(r.customer, r.suggested); n++; }
+    });
+    if (n) renderTable(_rows);   // vẽ lại để thấy giá trị + badge nháp
+    showToast(n ? `Đã điền gợi ý cho ${n} khách (mọi trang) — kiểm tra rồi "Lưu tất cả"` : 'Tất cả đã có mục tiêu', n ? 'info' : 'success');
+}
+
+/** Lưu mọi bản nháp khác giá trị server (gom từ TẤT CẢ các trang). */
 async function saveAll() {
-    const inputs = document.querySelectorAll('#kd-tg2-table .kd-tg2-input');
     const changed = [];
-    inputs.forEach((inp) => {
-        const cur = parseFloat(inp.value) || 0;
-        const orig = parseFloat(inp.dataset.orig) || 0;
-        if (cur !== orig) changed.push({ customer: inp.dataset.c, amount: cur });
+    _rows.forEach((r) => {
+        if (!_pending.has(r.customer)) return;
+        const cur = Number(_pending.get(r.customer)) || 0;
+        if (cur !== (r.monthly_target || 0)) changed.push({ customer: r.customer, amount: cur });
     });
     if (!changed.length) { showToast('Không có thay đổi để lưu', 'info'); return; }
     try {
@@ -151,14 +168,13 @@ async function saveAll() {
     }
 }
 
-/** Dán từ Excel/Sheets: mỗi dòng "tên/mã <tab|,> số". */
+/** Dán từ Excel/Sheets: mỗi dòng "tên/mã <tab|,> số" — khớp trên TOÀN BỘ danh sách. */
 function applyPaste() {
     const ta = document.getElementById('kd-tg2-paste');
     const text = (ta.value || '').trim();
     if (!text) { showToast('Chưa có dữ liệu để dán', 'info'); return; }
-    const inputs = Array.from(document.querySelectorAll('#kd-tg2-table .kd-tg2-input'));
-    const byCode = new Map(inputs.map((i) => [i.dataset.c.toLowerCase(), i]));
-    const byName = new Map(inputs.map((i) => [i.dataset.name, i]));
+    const byCode = new Map(_rows.map((r) => [r.customer.toLowerCase(), r]));
+    const byName = new Map(_rows.map((r) => [(r.customer_name || '').toLowerCase().trim(), r]));
     let ok = 0, miss = 0;
     for (const line of text.split('\n')) {
         if (!line.trim()) continue;
@@ -166,15 +182,16 @@ function applyPaste() {
         if (parts.length < 2) { miss++; continue; }
         const amount = parseFloat(parts[parts.length - 1].replace(/[^\d.-]/g, '')) || 0;
         const key = parts.slice(0, -1).join(' ').toLowerCase().trim();
-        const inp = byCode.get(key) || byName.get(key);
-        if (inp && amount > 0) { inp.value = amount; ok++; } else { miss++; }
+        const row = byCode.get(key) || byName.get(key);
+        if (row && amount > 0) { _pending.set(row.customer, amount); ok++; } else { miss++; }
     }
+    if (ok) renderTable(_rows);
     showToast(`Đã áp dụng ${ok} dòng${miss ? `, ${miss} dòng không khớp` : ''} — kiểm tra rồi "Lưu tất cả"`, ok ? 'success' : 'error');
 }
 
 async function saveTarget(customer, root) {
     const input = root.querySelector(`.kd-tg2-input[data-c="${CSS.escape(customer)}"]`);
-    const amount = parseFloat(input.value) || 0;
+    const amount = input ? (parseFloat(input.value) || 0) : (Number(_pending.get(customer)) || 0);
     try {
         await api.mgr.setTarget(customer, amount);
         showToast('Đã lưu mục tiêu', 'success');

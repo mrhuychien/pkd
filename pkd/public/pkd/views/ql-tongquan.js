@@ -2,6 +2,7 @@ import { html } from '../lib/dom.js';
 import { formatCurrency, formatNumber, formatVNDShort, escapeHtml } from '../lib/format.js';
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
+import { paged } from '../components/data-table.js';
 import { qlNav, channelOf, CHANNEL_LABEL, CHANNEL_NOUN } from '../components/ql-nav.js';
 import { salesMatrixHtml } from '../components/sales-matrix.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
@@ -206,7 +207,10 @@ function renderTable(rows) {
     if (!root) return;
     const noun = CHANNEL_NOUN[_k];
     if (!rows.length) { root.innerHTML = `<div class="kd-text-muted kd-text-center" style="padding:1rem;">Không có ${noun} phù hợp</div>`; return; }
-    root.innerHTML = html`
+    root.innerHTML = paged({
+        rows,
+        pageSize: 10,
+        render: (slice) => html`
         <div style="overflow-x:auto;"><table class="kd-table">
             <thead><tr>
                 <th>${noun}</th><th>Tỉnh</th><th>Hạng</th>
@@ -214,7 +218,7 @@ function renderTable(rows) {
                 <th>Phân khúc</th><th>Chu kỳ</th><th></th>
             </tr></thead>
             <tbody>
-                ${rows.map((r) => html`<tr>
+                ${slice.map((r) => html`<tr>
                     <td data-label="${noun}"><strong>${escapeHtml(r.customer_name)}</strong>${r.is_new ? ' <span class="kd-badge kd-badge-primary">Mới</span>' : ''}<div class="kd-text-sm kd-text-muted">${escapeHtml(r.customer)}</div></td>
                     <td data-label="Tỉnh">${escapeHtml(r.territory || '—')}</td>
                     <td data-label="Hạng"><span class="kd-badge kd-badge-${RANK_BADGE[r.rank] || 'muted'}">${r.rank}</span></td>
@@ -226,9 +230,10 @@ function renderTable(rows) {
                     <td><button class="kd-btn-primary kd-ql-view" data-c="${escapeHtml(r.customer)}" type="button" style="padding:6px 12px;font-size:.8rem;">Xem</button></td>
                 </tr>`).join('')}
             </tbody>
-        </table></div>
-    `;
-    root.querySelectorAll('.kd-ql-view').forEach((b) => b.addEventListener('click', () => { location.hash = `#/ql-khach?k=${_k}&c=` + encodeURIComponent(b.dataset.c); }));
+        </table></div>`,
+        onDraw: (el) => el.querySelectorAll('.kd-ql-view').forEach((b) =>
+            b.addEventListener('click', () => { location.hash = `#/ql-khach?k=${_k}&c=` + encodeURIComponent(b.dataset.c); })),
+    });
 }
 
 function renderSeg(seg) {

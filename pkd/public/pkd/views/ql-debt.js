@@ -2,6 +2,7 @@ import { html } from '../lib/dom.js';
 import { formatCurrency, formatVNDShort, escapeHtml } from '../lib/format.js';
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
+import { paged } from '../components/data-table.js';
 import { qlNav, channelOf, CHANNEL_LABEL, CHANNEL_NOUN } from '../components/ql-nav.js';
 
 // ─── Công nợ & Tuổi nợ theo kênh (port từ npp quan-ly-debt — công nợ GL) ─────
@@ -56,30 +57,38 @@ function renderDebt(d) {
         </div>
 
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold">Top ${escapeHtml(noun)} nợ quá hạn</h3>
-            <table class="kd-table kd-mt-2">
+            ${top.length ? paged({
+                rows: top,
+                pageSize: 10,
+                render: (slice) => html`<table class="kd-table kd-mt-2">
                 <thead><tr><th>${noun}</th><th>Tỉnh</th><th class="kd-text-end">Nợ quá hạn</th></tr></thead>
                 <tbody>
-                    ${top.map((r) => html`<tr>
+                    ${slice.map((r) => html`<tr>
                         <td data-label="${noun}"><a href="#/ql-khach?k=${_k}&c=${encodeURIComponent(r.customer)}" class="kd-link">${escapeHtml(r.customer_name)}</a></td>
                         <td data-label="Tỉnh">${escapeHtml(r.territory || '—')}</td>
                         <td data-label="Nợ quá hạn" class="kd-text-end"><strong style="color:var(--kd-danger);">${formatCurrency(r.overdue)}</strong></td>
-                    </tr>`).join('') || '<tr><td colspan="3" class="kd-text-center kd-text-muted">Không có nợ quá hạn 🎉</td></tr>'}
+                    </tr>`).join('')}
                 </tbody>
-            </table>
+            </table>`,
+            }) : '<p class="kd-text-sm kd-text-muted kd-mt-2">Không có nợ quá hạn 🎉</p>'}
         </div>
 
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold">Hạn mức tín dụng & % sử dụng</h3>
-            ${credit.length ? html`<table class="kd-table kd-mt-2">
+            ${credit.length ? paged({
+                rows: credit,
+                pageSize: 10,
+                render: (slice) => html`<table class="kd-table kd-mt-2">
                 <thead><tr><th>${noun}</th><th class="kd-text-end">Hạn mức</th><th class="kd-text-end">Dư nợ</th><th class="kd-text-end">% dùng</th></tr></thead>
                 <tbody>
-                    ${credit.map((r) => html`<tr>
+                    ${slice.map((r) => html`<tr>
                         <td data-label="${noun}">${r.usage_pct >= 100 ? '🔴 ' : (r.usage_pct >= 80 ? '🟠 ' : '')}<a href="#/ql-khach?k=${_k}&c=${encodeURIComponent(r.customer)}" class="kd-link">${escapeHtml(r.customer_name)}</a></td>
                         <td data-label="Hạn mức" class="kd-text-end">${formatCurrency(r.credit_limit)}</td>
                         <td data-label="Dư nợ" class="kd-text-end">${formatCurrency(r.outstanding)}</td>
                         <td data-label="% dùng" class="kd-text-end"><strong style="color:${r.usage_pct >= 100 ? 'var(--kd-danger)' : (r.usage_pct >= 80 ? 'var(--kd-warning)' : 'var(--kd-text)')};">${r.usage_pct.toFixed(0)}%</strong></td>
                     </tr>`).join('')}
                 </tbody>
-            </table>` : `<p class="kd-text-sm kd-text-muted kd-mt-2">Chưa thiết lập hạn mức tín dụng (Customer Credit Limit) cho ${escapeHtml(noun)} nào.</p>`}
+            </table>`,
+            }) : `<p class="kd-text-sm kd-text-muted kd-mt-2">Chưa thiết lập hạn mức tín dụng (Customer Credit Limit) cho ${escapeHtml(noun)} nào.</p>`}
         </div>
     `;
 }

@@ -5,6 +5,7 @@
 
 import { html } from '../lib/dom.js';
 import { formatCurrency, formatVNDShort, formatDate, escapeHtml } from '../lib/format.js';
+import { paged } from './data-table.js';
 
 const STK = 'position:sticky;left:0;z-index:1;min-width:170px;';
 
@@ -47,10 +48,11 @@ export function salesMatrixHtml(d, opts = {}) {
     const title = opts.title ? `<h3 class="kd-font-bold">${escapeHtml(opts.title)}</h3>` : '';
     const meta = opts.showMeta ? `<div class="kd-text-sm kd-text-muted" style="margin:.25rem 0 .5rem;">Năm tài chính ${escapeHtml(String(d.fiscal_year || ''))}${d.fy_start ? ' · từ ' + formatDate(d.fy_start) + ' đến nay' : ''} · Tổng YTD ${formatVNDShort(t.grand_total || 0)} · ${rows.length} ${escapeHtml(noun)}</div>` : '';
 
-    return html`
-        ${kpis}
-        <div class="kd-card ${showKpis ? 'kd-mt-3' : ''}">
-            ${title}${meta}
+    // Bảng phân trang 10 dòng/trang; dòng "Tổng cộng" luôn là tổng TOÀN BỘ.
+    const tableHtml = paged({
+        rows,
+        pageSize: 10,
+        render: (slice, start) => html`
             <div style="overflow-x:auto;">
             <table class="kd-table">
                 <thead><tr>
@@ -59,21 +61,28 @@ export function salesMatrixHtml(d, opts = {}) {
                     <th class="kd-text-end" style="white-space:nowrap;">Tổng YTD</th>
                 </tr></thead>
                 <tbody>
-                    ${rows.map((r, i) => html`<tr>
+                    ${slice.map((r, i) => html`<tr>
                         <td style="${STK}background:var(--kd-surface);">
-                            <strong style="color:var(--kd-text-muted);">${i + 1}.</strong>
+                            <strong style="color:var(--kd-text-muted);">${start + i + 1}.</strong>
                             ${detailHref ? `<a href="${detailHref(r.customer)}" class="kd-link">${escapeHtml(r.customer_name)}</a>` : `<strong>${escapeHtml(r.customer_name)}</strong>`}</td>
                         ${months.map((m) => cell(r.monthly[m.key] || 0)).join('')}
                         <td class="kd-text-end"><strong title="${formatCurrency(r.total)}">${formatVNDShort(r.total)}</strong></td>
                     </tr>`).join('')}
                 </tbody>
                 <tfoot><tr style="border-top:2px solid var(--kd-border);font-weight:800;">
-                    <td style="${STK}background:var(--kd-surface-2);">Tổng cộng</td>
+                    <td style="${STK}background:var(--kd-surface-2);">Tổng cộng (toàn bộ)</td>
                     ${months.map((m) => `<td class="kd-text-end" title="${formatCurrency(colT[m.key] || 0)}">${formatVNDShort(colT[m.key] || 0)}</td>`).join('')}
                     <td class="kd-text-end"><strong title="${formatCurrency(t.grand_total || 0)}">${formatVNDShort(t.grand_total || 0)}</strong></td>
                 </tr></tfoot>
             </table>
-            </div>
+            </div>`,
+    });
+
+    return html`
+        ${kpis}
+        <div class="kd-card ${showKpis ? 'kd-mt-3' : ''}">
+            ${title}${meta}
+            ${tableHtml}
             <p class="kd-text-sm kd-text-muted kd-mt-2">Doanh số = tổng hoá đơn (đã loại HĐ đầu kỳ). Chạm vào ô để xem số đầy đủ; bấm tên để mở chi tiết.</p>
         </div>
     `;

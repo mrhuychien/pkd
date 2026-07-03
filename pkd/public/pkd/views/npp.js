@@ -3,7 +3,7 @@ import { formatVNDShort, formatNumber, escapeHtml } from '../lib/format.js';
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
 import { showToast } from '../components/toast.js';
-import { dataTable } from '../components/data-table.js';
+import { pagedTable } from '../components/data-table.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
 
 const charts = chartRegistry();
@@ -84,7 +84,7 @@ function renderBody(d) {
             <div style="display:flex;flex-wrap:wrap;gap:6px;">${segChips || '<span class="kd-text-muted">—</span>'}</div></div>
 
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold kd-mb-2">Biến động phân khúc (so đầu tháng)</h3>
-            ${(d.segment_changes || []).length ? dataTable({
+            ${(d.segment_changes || []).length ? pagedTable({
                 columns: [
                     { key: 'customer_name', label: 'Khách', render: custLink },
                     { key: 'change', label: 'Chuyển', render: (r) => `<span class="kd-badge ${r.drop > 0 ? 'kd-badge-danger' : 'kd-badge-success'}">${escapeHtml(r.from)} → ${escapeHtml(r.to)}</span>` },
@@ -102,7 +102,7 @@ function renderBody(d) {
 
         <div class="kd-card kd-mt-3"><h3 class="kd-font-bold kd-mb-2">Công nợ (aging)</h3>
             ${agingBar(debt.buckets || {})}
-            <div class="kd-mt-3">${dataTable({
+            <div class="kd-mt-3">${pagedTable({
                 columns: [
                     { key: 'customer_name', label: 'Khách', render: custLink },
                     { key: 'outstanding', label: 'Nợ', render: (r) => formatVNDShort(r.outstanding) },
@@ -114,7 +114,7 @@ function renderBody(d) {
 
 function renderCustTable(rows, extraCols) {
     if (!rows || !rows.length) return '<div class="kd-text-sm kd-text-muted">Không có mục.</div>';
-    return dataTable({
+    return pagedTable({
         columns: [{ key: 'customer_name', label: 'Khách', render: custLink }, ...extraCols],
         rows,
     });

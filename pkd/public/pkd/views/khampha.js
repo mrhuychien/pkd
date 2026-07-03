@@ -3,7 +3,7 @@ import { formatVNDShort, formatNumber, escapeHtml, todayISO } from '../lib/forma
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
 import { showToast } from '../components/toast.js';
-import { dataTable } from '../components/data-table.js';
+import { pagedTable } from '../components/data-table.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
 
 const charts = chartRegistry();
@@ -137,7 +137,7 @@ function renderTable(data) {
         });
     }
     document.getElementById('kd-ex-result').innerHTML =
-        `<div class="kd-card"><h3 class="kd-font-bold kd-mb-2">Kết quả (${rows.length})</h3>${dataTable({ columns, rows })}</div>`;
+        `<div class="kd-card"><h3 class="kd-font-bold kd-mb-2">Kết quả (${rows.length})</h3>${pagedTable({ columns, rows })}</div>`;
 }
 
 async function renderChart(data) {
