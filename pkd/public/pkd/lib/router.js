@@ -58,7 +58,18 @@ async function dispatch() {
         }
         return;
     }
-    // No match → fallback to '/'
+    // No match → nhiều khả năng shell đang chạy BẢN CŨ (route mới thêm sau khi
+    // trang được tải — deploy giữa phiên). Reload 1 lần để nạp shell mới; nếu
+    // sau reload vẫn không match (route thật sự không tồn tại) → về '/'.
+    const flag = 'kd_reload:' + path;
+    try {
+        if (!sessionStorage.getItem(flag)) {
+            sessionStorage.setItem(flag, '1');
+            location.reload();
+            return;
+        }
+        sessionStorage.removeItem(flag);
+    } catch (e) { /* sessionStorage bị chặn → bỏ qua */ }
     navigate('/', true);
 }
 
