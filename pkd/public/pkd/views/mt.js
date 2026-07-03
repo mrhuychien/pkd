@@ -16,9 +16,14 @@ function pctBadge(v) {
 export async function render({ container }) {
     container.innerHTML = html`
         ${banner({ title: 'Kênh MT', subtitle: 'Chuỗi siêu thị — sell-in, nhiễu theo PO (ưu tiên trailing 3 tháng)' })}
-        <a href="#/ql-ov?k=mt" class="kd-cta-block"><i class="fas fa-toolbox"></i><span>Quản lý kênh MT (phân tích sâu)</span><i class="fas fa-chevron-right"></i></a>
+        <a href="#/ql-ov?k=mt" class="kd-cta-block" id="kd-mt-qlk"><i class="fas fa-toolbox"></i><span>Quản lý kênh MT (phân tích sâu)</span><i class="fas fa-chevron-right"></i></a>
         <div id="kd-mt-body"><div class="kd-skeleton" style="height:400px;"></div></div>
     `;
+    // Shell cũ (tab mở trước deploy) không có route /ql-* → dùng full-load URL.
+    if (!window.PKD?.build) {
+        const a = container.querySelector('#kd-mt-qlk');
+        if (a) a.href = `/kd?r=${Date.now()}#/ql-ov?k=mt`;
+    }
     try {
         _data = await api.getMtDashboard();
         renderBody(_data);

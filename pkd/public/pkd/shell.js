@@ -4,10 +4,15 @@ import { initSeason, openSeasonPicker } from './components/season-picker.js';
 import { highlightActiveRoute } from './components/bottom-nav.js';
 import * as store from './lib/store.js';
 
+// Dấu vết build — đổi mỗi lần sửa shell/routes. Gõ `PKD.build` trong Console
+// để biết trình duyệt đang chạy bản nào (chẩn đoán shell cũ/mới tức thì).
+const BUILD = 'qlk-r3';
+
 // ─── 1. Sanity check ───────────────────────────────────────────────────
 if (!window.PKD_CONTEXT) {
     console.error('[PKD] window.PKD_CONTEXT missing — check www/kd.html');
 }
+console.log(`[PKD] shell build=${BUILD} · assetVersion=${window.PKD_CONTEXT?.assetVersion || '?'} · routes QLK: có`);
 
 // ─── 2. Season ─────────────────────────────────────────────────────────
 initSeason();
@@ -167,4 +172,4 @@ router.setBeforeNavigate(({ path }) => {
 
 // ─── 9. Start ──────────────────────────────────────────────────────────
 router.start();
-window.PKD = { store, router, showToast };
+window.PKD = { store, router, showToast, build: BUILD };

@@ -33,9 +33,15 @@ function agingBar(b) {
 export async function render({ container }) {
     container.innerHTML = html`
         ${banner({ title: 'Kênh NPP', subtitle: 'Sức khoẻ nhà phân phối — coverage, vòng đời, tái đặt' })}
-        <a href="#/ql-ov?k=npp" class="kd-cta-block"><i class="fas fa-toolbox"></i><span>Quản lý kênh NPP (phân tích sâu)</span><i class="fas fa-chevron-right"></i></a>
+        <a href="#/ql-ov?k=npp" class="kd-cta-block" id="kd-npp-qlk"><i class="fas fa-toolbox"></i><span>Quản lý kênh NPP (phân tích sâu)</span><i class="fas fa-chevron-right"></i></a>
         <div id="kd-npp-body"><div class="kd-skeleton" style="height:400px;"></div></div>
     `;
+    // Tab mở TRƯỚC deploy chạy shell cũ (không có route /ql-* — nhận biết qua
+    // PKD.build chưa tồn tại) → đổi sang full-load URL để nạp shell mới.
+    if (!window.PKD?.build) {
+        const a = container.querySelector('#kd-npp-qlk');
+        if (a) a.href = `/kd?r=${Date.now()}#/ql-ov?k=npp`;
+    }
     try {
         const d = await api.getNppDashboard();
         renderBody(d);

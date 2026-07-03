@@ -21,4 +21,9 @@ export async function render({ container }) {
                     </span>
                 </a>`).join('')}
         </div>`;
+    // Shell cũ (tab mở trước deploy) không có route /ql-* → dùng full-load URL.
+    if (!window.PKD?.build) {
+        const a = container.querySelector('a[href="#/ql-ov?k=npp"]');
+        if (a) a.href = `/kd?r=${Date.now()}#/ql-ov?k=npp`;
+    }
 }
