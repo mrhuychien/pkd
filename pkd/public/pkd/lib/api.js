@@ -61,6 +61,8 @@ export const mgr = {
     customerList:    (k)                  => call('pkd.api.manager.customer_list', { channel: k }),
     customerDetail:  (k, customer, months) => call('pkd.api.manager.customer_detail', { channel: k, customer, months }),
     salesMatrix:     (k)                  => call('pkd.api.manager.sales_matrix', { channel: k }),
+    mtChainOutlets:  (customer, months)   => call('pkd.api.manager.mt_chain_outlets', { customer, months }),
+    mtOutletDetail:  (customer, outlet, months) => call('pkd.api.manager.mt_outlet_detail', { customer, outlet, months }),
 };
 
 // P2

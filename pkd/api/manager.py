@@ -1183,3 +1183,258 @@ def sales_matrix(channel: str) -> dict:
 	return {"meta": _meta(channel), "fiscal_year": fy_label, "fy_start": str(fy_start),
 		"months": months, "rows": rows,
 		"totals": {"monthly": col_totals, "grand_total": sum(col_totals.values())}}
+
+
+# ─── MT: phân tích chi tiết siêu thị thuộc chuỗi (shipping_address_name) ────
+NO_ADDR = "(không ghi địa chỉ)"
+
+
+def _mt_chain_guard(customer: str):
+	"""Validate customer tồn tại và thuộc kênh MT; trả (customer_name)."""
+	groups = set(groups_of("mt"))
+	cinfo = frappe.db.get_value(
+		"Customer", customer, ["customer_name", "customer_group"], as_dict=True)
+	if not cinfo:
+		frappe.throw(_("Khách không tồn tại: {0}").format(customer))
+	if cinfo.customer_group not in groups:
+		frappe.throw(_("Khách hàng này không thuộc kênh MT"))
+	return cinfo.customer_name
+
+
+def _address_titles(addr_names: list[str]) -> dict:
+	"""{address_docname: 'address_title · city'} — nhãn thân thiện cho siêu thị."""
+	addr_names = [a for a in set(addr_names) if a]
+	if not addr_names:
+		return {}
+	out = {}
+	for r in frappe.get_all(
+		"Address", filters={"name": ["in", addr_names]},
+		fields=["name", "address_title", "city"]):
+		title = r.address_title or r.name
+		out[r.name] = f"{title} · {r.city}" if r.city else title
+	return out
+
+
+@frappe.whitelist()
+def mt_chain_outlets(customer: str, months: int = 12) -> dict:
+	"""Phân tích TOÀN BỘ siêu thị của 1 chuỗi MT theo shipping_address_name.
+
+	Mỗi siêu thị: doanh số kỳ + % đóng góp, so kỳ trước/YoY period-aligned,
+	thùng, đơn/AOV, nhịp đặt trong kỳ, im lặng, số nhóm hàng + ma trận tháng.
+	HĐ thiếu địa chỉ gom vào bucket riêng (hygiene). Doanh số loại opening."""
+	_guard()
+	settings = get_settings()
+	chain_name = _mt_chain_guard(customer)
+	months = max(1, min(int(months or 12), 36))
+	today = getdate()
+	start = get_first_day(add_months(today, -(months - 1)))
+	prev_start = add_months(start, -months)
+	prev_end = add_months(today, -months)
+	ly_start = add_months(start, -12)
+	ly_end = add_months(today, -12)
+
+	# Kỳ hiện tại — invoice level per outlet ('' = thiếu địa chỉ).
+	cur = frappe.db.sql(
+		"""SELECT IFNULL(si.shipping_address_name,'') AS outlet,
+		          COALESCE(SUM(si.grand_total),0) AS revenue, COUNT(*) AS orders,
+		          MAX(si.posting_date) AS last_inv, MIN(si.posting_date) AS first_inv
+		   FROM `tabSales Invoice` si
+		   WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s
+		     AND IFNULL(si.is_opening,'No')!='Yes'
+		   GROUP BY outlet""",
+		(customer, start, today), as_dict=True)
+
+	def _rev_by_outlet(s, e) -> dict:
+		return {r["k"]: flt(r["v"]) for r in frappe.db.sql(
+			"""SELECT IFNULL(si.shipping_address_name,'') AS k, COALESCE(SUM(si.grand_total),0) AS v
+			   FROM `tabSales Invoice` si
+			   WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s
+			     AND IFNULL(si.is_opening,'No')!='Yes'
+			   GROUP BY k""", (customer, s, e), as_dict=True)}
+
+	prev_map = _rev_by_outlet(prev_start, prev_end)
+	ly_map = _rev_by_outlet(ly_start, ly_end)
+
+	boxes_map = {r["k"]: flt(r["v"]) for r in frappe.db.sql(
+		"""SELECT IFNULL(si.shipping_address_name,'') AS k, COALESCE(SUM(sii.qty),0) AS v
+		   FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name
+		   WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s
+		     AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s
+		   GROUP BY k""", (customer, start, today, tuple(BOX_UOMS)), as_dict=True)}
+
+	groups_map = {r["k"]: int(r["v"]) for r in frappe.db.sql(
+		"""SELECT IFNULL(si.shipping_address_name,'') AS k, COUNT(DISTINCT sii.item_group) AS v
+		   FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name
+		   WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s
+		     AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s
+		   GROUP BY k""", (customer, start, today, tuple(BOX_UOMS)), as_dict=True)}
+
+	# Ma trận tháng per outlet (trong cửa sổ kỳ).
+	monthly_by: dict = {}
+	for r in frappe.db.sql(
+		"""SELECT IFNULL(si.shipping_address_name,'') AS o, DATE_FORMAT(si.posting_date,'%%Y-%%m') AS m,
+		          COALESCE(SUM(si.grand_total),0) AS v
+		   FROM `tabSales Invoice` si
+		   WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s
+		     AND IFNULL(si.is_opening,'No')!='Yes'
+		   GROUP BY o, m""", (customer, start, today), as_dict=True):
+		monthly_by.setdefault(r["o"], {})[r["m"]] = flt(r["v"])
+
+	month_list = []
+	d = get_first_day(start)
+	while getdate(d) <= today:
+		dk = getdate(d)
+		month_list.append({"key": dk.strftime("%Y-%m"), "label": "T%d/%s" % (dk.month, dk.strftime("%y"))})
+		d = add_months(d, 1)
+	month_keys = [m["key"] for m in month_list]
+
+	titles = _address_titles([r["outlet"] for r in cur if r["outlet"]])
+	silence = int(settings.mt_ngay_im_lang or 30)
+	total_rev = sum(flt(r["revenue"]) for r in cur)
+
+	outlets = []
+	col_totals = {k: 0.0 for k in month_keys}
+	no_addr = None
+	for r in cur:
+		o = r["outlet"]
+		rev = flt(r["revenue"])
+		orders = int(r["orders"] or 0)
+		last_inv = getdate(r["last_inv"]) if r["last_inv"] else None
+		first_inv = getdate(r["first_inv"]) if r["first_inv"] else None
+		days_since = date_diff(today, last_inv) if last_inv else None
+		# Nhịp đặt trong kỳ (orders>1); tham khảo — cửa sổ là kỳ đã chọn.
+		avg_cycle = (date_diff(last_inv, first_inv) / (orders - 1)) if (orders > 1 and first_inv and last_inv) else None
+		prev = prev_map.get(o, 0.0)
+		ly = ly_map.get(o, 0.0)
+		mm = {k: flt(monthly_by.get(o, {}).get(k, 0.0)) for k in month_keys}
+		for k in month_keys:
+			col_totals[k] += mm[k]
+		row = {
+			"outlet": o or NO_ADDR,
+			"is_no_addr": not o,
+			"title": (titles.get(o) or o) if o else NO_ADDR,
+			"revenue": rev,
+			"share_pct": (rev / total_rev * 100) if total_rev else None,
+			"prev_revenue": prev,
+			"growth_pct": ((rev - prev) / prev * 100) if prev else None,
+			"ly_revenue": ly,
+			"yoy_pct": ((rev - ly) / ly * 100) if ly else None,
+			"boxes": flt(boxes_map.get(o, 0.0)),
+			"orders": orders,
+			"aov": (rev / orders) if orders else 0.0,
+			"groups_bought": groups_map.get(o, 0),
+			"last_invoice": str(last_inv) if last_inv else None,
+			"days_since": days_since,
+			"avg_cycle": round(avg_cycle, 1) if avg_cycle else None,
+			"silent": bool(o and days_since is not None and days_since >= silence),
+			"monthly": mm,
+		}
+		if not o:
+			no_addr = row
+		else:
+			outlets.append(row)
+	outlets.sort(key=lambda x: x["revenue"], reverse=True)
+
+	no_addr_rev = flt(no_addr["revenue"]) if no_addr else 0.0
+	hygiene = {
+		"no_addr_revenue": no_addr_rev,
+		"no_addr_orders": int(no_addr["orders"]) if no_addr else 0,
+		"addr_pct": ((total_rev - no_addr_rev) / total_rev * 100) if total_rev else None,
+	}
+
+	return {
+		"meta": {"channel": "mt", "label": CHANNEL_LABELS["mt"], "noun": "Siêu thị"},
+		"chain": {"customer": customer, "customer_name": chain_name},
+		"months": months,
+		"month_list": month_list,
+		"outlets": outlets,
+		"no_addr": no_addr,
+		"hygiene": hygiene,
+		"totals": {
+			"revenue": total_rev,
+			"boxes": sum(flt(v) for v in boxes_map.values()),
+			"orders": sum(int(r["orders"] or 0) for r in cur),
+			"outlet_count": len(outlets),
+			"silent_count": sum(1 for x in outlets if x["silent"]),
+			"monthly": col_totals,
+		},
+	}
+
+
+@frappe.whitelist()
+def mt_outlet_detail(customer: str, outlet: str, months: int = 12) -> dict:
+	"""Drill 1 siêu thị của chuỗi: cơ cấu nhóm hàng, xu hướng 12 tháng, HĐ gần nhất.
+
+	outlet = shipping_address_name; truyền NO_ADDR để soi bucket thiếu địa chỉ."""
+	_guard()
+	_mt_chain_guard(customer)
+	months = max(1, min(int(months or 12), 36))
+	today = getdate()
+	start = get_first_day(add_months(today, -(months - 1)))
+
+	# Điều kiện outlet: docname thật hoặc bucket thiếu địa chỉ.
+	if outlet == NO_ADDR:
+		addr_cond = "(si.shipping_address_name IS NULL OR si.shipping_address_name='')"
+		addr_params: tuple = ()
+		title = NO_ADDR
+	else:
+		addr_cond = "si.shipping_address_name=%s"
+		addr_params = (outlet,)
+		title = _address_titles([outlet]).get(outlet) or outlet
+
+	# Cơ cấu nhóm hàng trong kỳ (không margin).
+	by_group = frappe.db.sql(
+		f"""SELECT i.item_group, COALESCE(SUM(sii.amount),0) AS revenue, COALESCE(SUM(sii.qty),0) AS qty
+		    FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name
+		    JOIN `tabItem` i ON sii.item_code=i.item_code
+		    WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s
+		      AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s AND {addr_cond}
+		    GROUP BY i.item_group ORDER BY revenue DESC""",
+		(customer, start, today, tuple(BOX_UOMS)) + addr_params, as_dict=True)
+	total_grp = sum(flt(r["revenue"]) for r in by_group) or 0.0
+	by_group_out = [
+		{"item_group": r["item_group"], "revenue": flt(r["revenue"]), "qty": flt(r["qty"]),
+		 "pct": (flt(r["revenue"]) / total_grp * 100) if total_grp else 0}
+		for r in by_group]
+
+	# Xu hướng 12 tháng gần nhất (độc lập kỳ chọn) — doanh số + thùng.
+	trend_start = get_first_day(add_months(today, -11))
+	rev_m = {r["m"]: flt(r["v"]) for r in frappe.db.sql(
+		f"""SELECT DATE_FORMAT(si.posting_date,'%%Y-%%m') AS m, COALESCE(SUM(si.grand_total),0) AS v
+		    FROM `tabSales Invoice` si
+		    WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date>=%s
+		      AND IFNULL(si.is_opening,'No')!='Yes' AND {addr_cond} GROUP BY m""",
+		(customer, trend_start) + addr_params, as_dict=True)}
+	qty_m = {r["m"]: flt(r["v"]) for r in frappe.db.sql(
+		f"""SELECT DATE_FORMAT(si.posting_date,'%%Y-%%m') AS m, COALESCE(SUM(sii.qty),0) AS v
+		    FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name
+		    WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date>=%s
+		      AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s AND {addr_cond} GROUP BY m""",
+		(customer, trend_start, tuple(BOX_UOMS)) + addr_params, as_dict=True)}
+	monthly = []
+	for i in range(12):
+		dm = getdate(add_months(trend_start, i))
+		k = dm.strftime("%Y-%m")
+		monthly.append({"month": dm.strftime("%m/%Y"), "revenue": rev_m.get(k, 0.0), "qty": qty_m.get(k, 0.0)})
+
+	# HĐ gần nhất của siêu thị.
+	invoices = [
+		{"invoice": r["name"], "posting_date": str(getdate(r["posting_date"])),
+		 "grand_total": flt(r["grand_total"]), "outstanding": flt(r["outstanding_amount"]),
+		 "status": r["status"]}
+		for r in frappe.db.sql(
+			f"""SELECT si.name, si.posting_date, si.grand_total, si.outstanding_amount, si.status
+			    FROM `tabSales Invoice` si
+			    WHERE si.docstatus=1 AND si.customer=%s AND IFNULL(si.is_opening,'No')!='Yes'
+			      AND {addr_cond}
+			    ORDER BY si.posting_date DESC LIMIT 15""",
+			(customer,) + addr_params, as_dict=True)]
+
+	return {
+		"outlet": outlet,
+		"title": title,
+		"months": months,
+		"by_group": by_group_out,
+		"monthly": monthly,
+		"invoices": invoices,
+	}

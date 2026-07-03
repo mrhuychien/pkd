@@ -23,7 +23,9 @@ function cell(v) {
 export function salesMatrixHtml(d, opts = {}) {
     const showKpis = opts.showKpis !== false;
     const noun = (d.meta && d.meta.noun) || 'KH';
-    const detailHref = opts.detailHref || ((c) => `#/khach/${encodeURIComponent(c)}`);
+    // detailHref === null → hàng không phải link (vd siêu thị theo địa chỉ giao).
+    const detailHref = opts.detailHref === null ? null
+        : (opts.detailHref || ((c) => `#/khach/${encodeURIComponent(c)}`));
     const months = d.months || [];
     const rows = d.rows || [];
     const t = d.totals || {};
@@ -60,7 +62,7 @@ export function salesMatrixHtml(d, opts = {}) {
                     ${rows.map((r, i) => html`<tr>
                         <td style="${STK}background:var(--kd-surface);">
                             <strong style="color:var(--kd-text-muted);">${i + 1}.</strong>
-                            <a href="${detailHref(r.customer)}" class="kd-link">${escapeHtml(r.customer_name)}</a></td>
+                            ${detailHref ? `<a href="${detailHref(r.customer)}" class="kd-link">${escapeHtml(r.customer_name)}</a>` : `<strong>${escapeHtml(r.customer_name)}</strong>`}</td>
                         ${months.map((m) => cell(r.monthly[m.key] || 0)).join('')}
                         <td class="kd-text-end"><strong title="${formatCurrency(r.total)}">${formatVNDShort(r.total)}</strong></td>
                     </tr>`).join('')}

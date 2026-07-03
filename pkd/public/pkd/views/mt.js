@@ -95,7 +95,10 @@ async function loadOutlets(customer, name) {
         const outlets = d.outlets || [];
         panel.innerHTML = `
             <div class="kd-card">
-                <h3 class="kd-font-bold kd-mb-2">🏬 Siêu thị của: ${escapeHtml(name)}</h3>
+                <div class="kd-flex kd-justify-between kd-items-center kd-mb-2">
+                    <h3 class="kd-font-bold">🏬 Siêu thị của: ${escapeHtml(name)}</h3>
+                    <a href="#/ql-khach?k=mt&c=${encodeURIComponent(customer)}" class="kd-link kd-text-sm">Phân tích sâu từng siêu thị →</a>
+                </div>
                 ${outlets.length ? dataTable({
                     columns: [
                         { key: 'shipping_address_name', label: 'Siêu thị', render: (r) => escapeHtml(r.shipping_address_name) },

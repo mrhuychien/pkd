@@ -3,6 +3,7 @@ import { formatCurrency, formatNumber, formatVNDShort, formatDate, escapeHtml } 
 import * as api from '../lib/api.js';
 import { banner } from '../components/banner.js';
 import { qlNav, channelOf, CHANNEL_LABEL, CHANNEL_NOUN } from '../components/ql-nav.js';
+import { salesMatrixHtml } from '../components/sales-matrix.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
 
 // ─── Phân tích CHI TIẾT 1 khách theo kênh (port từ npp quan-ly-npp, KHÔNG margin) ─
@@ -78,8 +79,143 @@ async function loadDetail(customer) {
         renderAll(d);
         renderTrend(Chart, d.sales.monthly || []);
         renderGroupChart(Chart, d.item_groups.by_group || []);
+        if (_k === 'mt') loadChainOutlets(customer);   // MT: chi tiết từng siêu thị của chuỗi
     } catch (err) {
         body.innerHTML = errBox(err.message);
+    }
+}
+
+// ─── MT: phân tích toàn bộ siêu thị thuộc chuỗi (shipping_address_name) ─────
+function pctCell(v) {
+    if (v === null || v === undefined) return '<span class="kd-text-muted">—</span>';
+    const up = v >= 0;
+    return `<span style="color:${up ? 'var(--kd-success)' : 'var(--kd-danger)'};font-weight:700;">${up ? '▲' : '▼'}${Math.abs(v).toFixed(0)}%</span>`;
+}
+
+async function loadChainOutlets(customer) {
+    const host = document.getElementById('kd-d-outlets');
+    if (!host) return;
+    host.innerHTML = '<div class="kd-skeleton" style="height:260px;"></div>';
+    try {
+        const d = await api.mgr.mtChainOutlets(customer, _months);
+        renderOutlets(host, customer, d);
+    } catch (err) {
+        host.innerHTML = `<div class="kd-card"><div class="kd-text-muted">Không tải được chi tiết siêu thị: ${escapeHtml(err.message)}</div></div>`;
+    }
+}
+
+function renderOutlets(host, customer, d) {
+    const t = d.totals || {};
+    const hy = d.hygiene || {};
+    const outlets = d.outlets || [];
+    const monthsLbl = d.months === 1 ? 'tháng này' : `${d.months} tháng`;
+
+    const hygieneNote = (hy.no_addr_revenue > 0)
+        ? `<div class="kd-card kd-mb-2" style="border-left:4px solid var(--kd-warning);background:rgba(245,158,11,.06);">
+             <b>⚠️ ${formatVNDShort(hy.no_addr_revenue)} (${hy.addr_pct != null ? (100 - hy.addr_pct).toFixed(0) : '?'}% doanh số, ${d.no_addr?.orders || 0} HĐ) KHÔNG ghi địa chỉ giao</b>
+             <div class="kd-text-sm">Phần này không phân bổ được về siêu thị nào — <a href="javascript:void(0)" class="kd-link" id="kd-ot-noaddr">soi bucket thiếu địa chỉ →</a></div></div>`
+        : '';
+
+    const rows = outlets.map((o, i) => `<tr>
+        <td data-label="Siêu thị"><strong style="color:var(--kd-text-muted);">${i + 1}.</strong>
+            <a href="javascript:void(0)" class="kd-link kd-ot-drill" data-o="${escapeHtml(o.outlet)}">${escapeHtml(o.title)}</a>
+            ${o.silent ? ' <span class="kd-badge kd-badge-warning">im lặng</span>' : ''}</td>
+        <td data-label="Doanh số" class="kd-text-end"><strong>${formatVNDShort(o.revenue)}</strong>
+            <div class="kd-text-sm kd-text-muted">${o.share_pct != null ? o.share_pct.toFixed(1) + '%' : '—'} chuỗi</div></td>
+        <td data-label="vs kỳ trước" class="kd-text-end">${pctCell(o.growth_pct)}</td>
+        <td data-label="YoY" class="kd-text-end">${pctCell(o.yoy_pct)}</td>
+        <td data-label="Thùng" class="kd-text-end">${formatNumber(o.boxes)}</td>
+        <td data-label="Đơn" class="kd-text-end">${formatNumber(o.orders)}<div class="kd-text-sm kd-text-muted">TB ${formatVNDShort(o.aov)}</div></td>
+        <td data-label="Nhóm" class="kd-text-end">${o.groups_bought}</td>
+        <td data-label="Đơn cuối">${o.last_invoice ? formatDate(o.last_invoice) : '—'}${o.days_since != null ? `<div class="kd-text-sm kd-text-muted">${o.days_since}d trước${o.avg_cycle ? ' · nhịp ~' + o.avg_cycle + 'd' : ''}</div>` : ''}</td>
+    </tr>`).join('');
+
+    host.innerHTML = html`
+        <h3 class="kd-font-bold kd-mt-3">🏬 Siêu thị thuộc chuỗi (${monthsLbl})</h3>
+        <div class="kd-kpi-grid">
+            <div class="kd-kpi-card"><div class="kd-kpi-label">Siêu thị có đơn</div>
+                <div class="kd-kpi-value">${formatNumber(t.outlet_count || 0)}</div>
+                <div class="kd-kpi-sub">😴 ${formatNumber(t.silent_count || 0)} im lặng</div></div>
+            <div class="kd-kpi-card"><div class="kd-kpi-label">Doanh số chuỗi</div>
+                <div class="kd-kpi-value">${formatVNDShort(t.revenue || 0)}</div>
+                <div class="kd-kpi-sub">${formatNumber(t.boxes || 0)} thùng · ${formatNumber(t.orders || 0)} đơn</div></div>
+            <div class="kd-kpi-card"><div class="kd-kpi-label">% có địa chỉ giao</div>
+                <div class="kd-kpi-value">${hy.addr_pct != null ? hy.addr_pct.toFixed(0) + '%' : '—'}</div>
+                <div class="kd-kpi-sub">theo doanh số kỳ</div></div>
+        </div>
+        ${hygieneNote}
+        <div class="kd-card kd-mt-2">
+            <div style="overflow-x:auto;"><table class="kd-table">
+                <thead><tr><th>Siêu thị</th><th class="kd-text-end">Doanh số</th><th class="kd-text-end">vs kỳ trước</th><th class="kd-text-end">YoY</th><th class="kd-text-end">Thùng</th><th class="kd-text-end">Đơn</th><th class="kd-text-end">Nhóm</th><th>Đơn cuối</th></tr></thead>
+                <tbody>${rows || '<tr><td colspan="8" class="kd-text-center kd-text-muted">Chưa có siêu thị nào phát sinh đơn trong kỳ</td></tr>'}</tbody>
+            </table></div>
+            <p class="kd-text-sm kd-text-muted kd-mt-2">So kỳ cùng số ngày (period-aligned). Bấm tên siêu thị để soi nhóm hàng, xu hướng, hoá đơn.</p>
+        </div>
+        <div id="kd-ot-detail" class="kd-mt-2"></div>
+        <div id="kd-ot-matrix" class="kd-mt-2"></div>
+    `;
+
+    // Ma trận siêu thị × tháng (tái dùng sales-matrix, hàng không phải link).
+    document.getElementById('kd-ot-matrix').innerHTML = salesMatrixHtml({
+        meta: { noun: 'Siêu thị' },
+        fiscal_year: `${d.months} tháng gần nhất`,
+        fy_start: null,
+        months: d.month_list || [],
+        rows: outlets.map((o) => ({ customer: o.outlet, customer_name: o.title, monthly: o.monthly || {}, total: o.revenue })),
+        totals: { monthly: t.monthly || {}, grand_total: t.revenue || 0 },
+    }, { showKpis: false, title: 'Doanh số từng siêu thị theo tháng', showMeta: true, detailHref: null });
+
+    host.querySelectorAll('.kd-ot-drill').forEach((a) =>
+        a.addEventListener('click', () => drillOutlet(customer, a.dataset.o)));
+    document.getElementById('kd-ot-noaddr')?.addEventListener('click', () => drillOutlet(customer, d.no_addr?.outlet || '(không ghi địa chỉ)'));
+}
+
+async function drillOutlet(customer, outlet) {
+    const panel = document.getElementById('kd-ot-detail');
+    if (!panel) return;
+    panel.innerHTML = '<div class="kd-skeleton" style="height:200px;"></div>';
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    try {
+        const Chart = await loadChartLib();
+        const d = await api.mgr.mtOutletDetail(customer, outlet, _months);
+        panel.innerHTML = html`
+            <div class="kd-card" style="background:var(--kd-surface-2);">
+                <div class="kd-flex kd-justify-between kd-items-center">
+                    <h3 class="kd-font-bold">🔍 ${escapeHtml(d.title)}</h3>
+                    <button type="button" id="kd-ot-close" class="kd-icon-btn" aria-label="Đóng"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="kd-chart-wrap kd-mt-2"><canvas id="kd-ot-trend"></canvas></div>
+                <div class="kd-grid-2 kd-mt-2">
+                    <div>
+                        <h4 class="kd-font-bold kd-text-sm">Cơ cấu nhóm hàng (kỳ)</h4>
+                        ${(d.by_group || []).length ? `<table class="kd-table kd-mt-2"><thead><tr><th>Nhóm</th><th class="kd-text-end">DS</th><th class="kd-text-end">Thùng</th><th class="kd-text-end">%</th></tr></thead>
+                        <tbody>${d.by_group.map((g) => `<tr><td data-label="Nhóm">${escapeHtml(g.item_group)}</td><td data-label="DS" class="kd-text-end">${formatVNDShort(g.revenue)}</td><td data-label="Thùng" class="kd-text-end">${formatNumber(g.qty)}</td><td data-label="%" class="kd-text-end">${(g.pct || 0).toFixed(1)}%</td></tr>`).join('')}</tbody></table>` : '<div class="kd-text-sm kd-text-muted">Chưa có dữ liệu.</div>'}
+                    </div>
+                    <div>
+                        <h4 class="kd-font-bold kd-text-sm">Hoá đơn gần nhất</h4>
+                        ${(d.invoices || []).length ? `<table class="kd-table kd-mt-2"><thead><tr><th>Ngày</th><th>Số HĐ</th><th class="kd-text-end">Tổng</th><th class="kd-text-end">Còn nợ</th></tr></thead>
+                        <tbody>${d.invoices.map((r) => `<tr><td data-label="Ngày">${formatDate(r.posting_date)}</td><td data-label="Số HĐ">${escapeHtml(r.invoice)}</td><td data-label="Tổng" class="kd-text-end">${formatVNDShort(r.grand_total)}</td><td data-label="Nợ" class="kd-text-end">${formatVNDShort(r.outstanding)}</td></tr>`).join('')}</tbody></table>` : '<div class="kd-text-sm kd-text-muted">Chưa có hoá đơn.</div>'}
+                    </div>
+                </div>
+            </div>`;
+        document.getElementById('kd-ot-close').addEventListener('click', () => { panel.innerHTML = ''; });
+        const m = d.monthly || [];
+        charts.add(new Chart(document.getElementById('kd-ot-trend'), {
+            data: {
+                labels: m.map((x) => x.month),
+                datasets: [
+                    { type: 'bar', label: 'Thùng', data: m.map((x) => x.qty), backgroundColor: 'rgba(16,185,129,0.45)', yAxisID: 'y1', order: 2 },
+                    { type: 'line', label: 'Doanh số', data: m.map((x) => x.revenue), borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.12)', tension: 0.3, fill: true, yAxisID: 'y', order: 1 },
+                ],
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom' }, tooltip: { callbacks: { label: (c) => c.dataset.yAxisID === 'y' ? `DS: ${formatVNDShort(c.parsed.y)}` : `Thùng: ${formatNumber(c.parsed.y)}` } } },
+                scales: { y: { position: 'left', ticks: { callback: (v) => formatVNDShort(v) } }, y1: { position: 'right', grid: { drawOnChartArea: false }, ticks: { callback: (v) => formatNumber(v) } } },
+            },
+        }));
+    } catch (err) {
+        panel.innerHTML = `<div class="kd-card"><div class="kd-text-muted">${escapeHtml(err.message)}</div></div>`;
     }
 }
 
@@ -220,6 +356,9 @@ function renderAll(d) {
                 </tbody>
             </table></div>
         </div>
+
+        <!-- MT: chi tiết từng siêu thị của chuỗi (đổ bởi loadChainOutlets) -->
+        <div id="kd-d-outlets"></div>
     `;
 }
 
