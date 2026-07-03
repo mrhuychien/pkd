@@ -117,5 +117,27 @@
 </div>
 
 <script type="module" src="/assets/pkd/pkd/shell.js?v={{ kd_v }}"></script>
+
+<script>
+// Phát hiện shell.js CŨ do tầng cache (CDN/proxy) trả nhầm dù HTML đã mới:
+// so BUILD server kỳ vọng vs PKD.build thực chạy. Lệch → banner cảnh báo rõ ràng
+// thay vì hỏng âm thầm (bấm link bị bật về trang chủ).
+window.addEventListener('load', function () {
+    setTimeout(function () {
+        var expected = {{ shell_build | tojson }};
+        var got = (window.PKD && window.PKD.build) || null;
+        if (got === expected) return;
+        var el = document.createElement('div');
+        el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#b91c1c;color:#fff;padding:10px 14px;font:600 13px Inter,sans-serif;text-align:center;';
+        el.innerHTML = '⚠️ Giao diện đang chạy bản CŨ do bộ nhớ cache máy chủ/CDN (shell: ' +
+            (got ? got : 'không rõ') + ' ≠ ' + expected + '). ' +
+            'Hãy xoá cache CDN (Cloudflare: Purge Everything) hoặc thử Ctrl+Shift+R. ' +
+            '<a href="javascript:location.reload(true)" style="color:#fff;text-decoration:underline;">Tải lại</a>';
+        document.body.appendChild(el);
+        console.error('[PKD] SHELL BUILD MISMATCH — expected', expected, 'got', got,
+            '→ tầng cache (CDN/nginx) đang trả /assets/pkd/pkd/shell.js cũ, ?v= bị vô hiệu.');
+    }, 3000);
+});
+</script>
 {% endif %}
 {% endblock %}

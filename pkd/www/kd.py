@@ -14,6 +14,10 @@ no_cache = 1  # SPA shell — không cache server-side
 
 SALES_ROLES = {"Sales Dashboard", "System Manager"}
 
+# PHẢI khớp hằng BUILD trong public/pkd/shell.js — dùng để phát hiện tầng cache
+# (CDN/proxy) trả shell.js cũ dù HTML đã mới (kd.html so sánh và cảnh báo).
+SHELL_BUILD = "qlk-r3"
+
 
 def get_context(context: dict) -> dict:
 	if frappe.session.user == "Guest":
@@ -35,6 +39,7 @@ def get_context(context: dict) -> dict:
 			"user_first_name": user_doc.get("first_name") or "",
 			"user_full_name": user_doc.get("full_name") or frappe.session.user,
 			"authorized": 1 if authorized else 0,
+			"shell_build": SHELL_BUILD,
 			"no_cache": 1,
 		}
 	)
