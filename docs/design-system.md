@@ -704,5 +704,122 @@ UTILITY   .npp-flex(-col/-wrap) .npp-items-center .npp-justify-between .npp-gap-
 
 ---
 
-*Nguồn: NPP Portal `npp/public/npp/shell.css` (+ components/). Đồng bộ file này khi
-shell.css đổi token/thêm component để các portal sau kế thừa đúng phong cách.*
+---
+
+## 15. Reskin #2 (npp → kd, app `pkd`) — bài học port + component mới nhập hệ
+
+Hệ này đã reskin thành công lần 2 cho dashboard PKD (`/kd`, prefix `kd-`).
+Port đúng 1 lệnh sed như Mục 1 **NHƯNG** có 2 bẫy sed không bắt được:
+
+```bash
+# ⚠️ sed 's/npp-/kd-/g' KHÔNG đụng tới identifier camelCase — phải rename riêng:
+sed 's/npp-/kd-/g; s/NPP_/PKD_/g;
+     s/nppToast/kdToast/g; s/nppModalUp/kdModalUp/g;
+     s/nppSpin/kdSpin/g; s/nppSkeleton/kdSkeleton/g' \
+    npp/public/npp/shell.css > <app>/public/<app>/shell.css
+# (liệt kê trước khi port:  grep -oE "npp[A-Za-z]+" shell.css | sort -u)
+```
+- **@keyframes camelCase** (`nppToastIn/Out`, `nppModalUp`, `nppSpin`,
+  `nppSkeleton`) và mọi `animation:` tham chiếu chúng — thiếu là toast/modal/
+  skeleton đứng hình mà không lỗi console.
+- **localStorage key mùa** trong season-picker (`npp_season` → `<app>_season`)
+  — không đổi thì 2 portal cùng site giẫm theme của nhau.
+
+Verify sau port (0 mới đạt): `grep -c "npp-" shell.css` **và**
+`grep -oE "npp[A-Za-z]+" shell.css` — bắt cả dạng gạch nối lẫn camelCase.
+
+### Component mới nhập hệ từ pkd (viết prefix gốc `npp-`, port thì sed như thường)
+
+```css
+/* Queue row — hàng đợi hành động ("hôm nay làm gì"), tap cả dòng đi drill-down */
+.npp-queue-list { display: flex; flex-direction: column; }
+.npp-queue-row { display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 9px 4px; border-bottom: 1px solid var(--npp-border);
+    color: var(--npp-text); text-decoration: none; }
+.npp-queue-row:last-child { border-bottom: 0; }
+.npp-queue-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.npp-queue-val  { font-weight: 700; color: var(--npp-text-2); flex-shrink: 0; font-size: .9rem; }
+
+/* Đèn pace (ô ma trận chỉ tiêu): xanh ≥ nhịp, vàng ≥ 80% nhịp, đỏ < 80% nhịp.
+   LUÔN semantic color — KHÔNG dùng màu mùa cho ngữ nghĩa đạt/hụt. */
+.npp-cell-light { display: inline-block; min-width: 42px; padding: 1px 6px;
+    border-radius: 8px; font-weight: 800; font-size: .8rem; }
+.npp-cell-green { background: rgba(16,185,129,.15); color: #047857; }
+.npp-cell-amber { background: rgba(245,158,11,.16); color: #b45309; }
+.npp-cell-red   { background: rgba(239,68,68,.14);  color: #b91c1c; }
+.npp-matrix-cell { cursor: pointer; }          /* ô tap được → modal nhập */
+
+/* Pager — phân trang bảng dài (đi kèm paged()/pagedTable(), xem pagination.md) */
+.npp-pager { display: flex; align-items: center; justify-content: center;
+    gap: 12px; padding: 10px 0 2px; }
+.npp-pager-btn { padding: 6px 14px; border: 1px solid var(--npp-border);
+    border-radius: 999px; background: var(--npp-surface); color: var(--npp-text);
+    font-weight: 700; font-size: .85rem; cursor: pointer; }
+.npp-pager-btn:disabled { opacity: .35; cursor: default; }
+.npp-pager-info { font-size: .82rem; font-weight: 600; color: var(--npp-text-2); }
+
+/* Progress bar mảnh (tiến độ chương trình) — fill dùng gradient mùa (trang trí) */
+.npp-progress { height: 8px; border-radius: 6px; background: var(--npp-surface-2); overflow: hidden; }
+.npp-progress > span { display: block; height: 100%; background: var(--npp-season-grad); }
+
+/* Menu list — màn "Thêm" (emoji + tiêu đề + mô tả, cả khối tap được) */
+.npp-menu-list { display: flex; flex-direction: column; gap: 10px; }
+.npp-menu-item { display: flex; align-items: center; gap: 14px; padding: 16px;
+    background: var(--npp-surface); border: 1px solid var(--npp-border);
+    border-radius: var(--npp-radius-md); color: var(--npp-text);
+    text-decoration: none; font-weight: 600; box-shadow: var(--npp-shadow-sm); }
+.npp-menu-item .npp-menu-emoji { font-size: 1.5rem; }
+
+/* Desktop nav ngang — đủ mọi mục khi màn rộng (bottom-nav mobile chỉ 5 slot) */
+.npp-desktop-nav { display: none; }
+@media (min-width: 768px) {
+    .npp-desktop-nav { display: flex; gap: 6px; flex-wrap: wrap; padding: 10px 0; }
+    .npp-desktop-nav a { padding: 7px 14px; border-radius: 999px; text-decoration: none;
+        font-weight: 700; color: var(--npp-text-2); background: var(--npp-surface);
+        border: 1px solid var(--npp-border); }
+    .npp-desktop-nav a.npp-active { background: var(--npp-season-grad); color: #fff; border-color: transparent; }
+}
+
+/* Hàng pills chọn ngữ cảnh (vd đổi kênh) — biến thể đậm của pill nav 8.6,
+   đặt NGAY TRÊN hàng tab thường để phân cấp "chọn phạm vi → chọn màn" */
+.npp-ql-channels { margin-bottom: 4px; }
+.npp-ql-channels a { font-weight: 800; }
+.npp-ql-channels a.npp-active { box-shadow: var(--npp-shadow-md); }
+
+/* Filter bar dạng label-trên-control (Khám phá/Tết) — biến thể của 8.8 */
+.npp-filter-bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.npp-filter-bar label { display: flex; flex-direction: column; gap: 3px;
+    font-size: .78rem; font-weight: 600; color: var(--npp-text-2); }
+.npp-filter-bar select, .npp-filter-bar input { padding: 8px 10px; border-radius: 10px;
+    border: 1px solid var(--npp-border); background: var(--npp-surface);
+    font-weight: 600; color: var(--npp-text); font-size: .9rem; }
+```
+
+Utility bổ sung: `.npp-mb-2/-3` (margin-bottom 8/16px), `.npp-w-full`.
+
+### UX pattern đã chuẩn hoá thêm ở pkd
+
+- **Bảng >10 dòng → phân trang** `paged()/pagedTable()` (pager ở trên) — chi
+  tiết pagination.md. Bảng có input dùng pending-edits Map + badge "nháp"
+  (`npp-badge-warning`).
+- **Hygiene warning card**: dữ liệu bẩn (thiếu địa chỉ giao, territory generic)
+  → card `border-left: 4px solid var(--npp-warning)` + nền vàng nhạt, **ẨN bảng
+  sai** và hướng dẫn làm sạch — không bao giờ vẽ số liệu sai.
+- **Banner lệch phiên bản** (đỏ `#b91c1c`, fixed top, z-index 99999) khi shell
+  chạy bản cũ do cache — xem stale-shell-defense.md.
+- Drill-down panel nền `--npp-surface-2` + nút ✕ đóng, `scrollIntoView` khi mở.
+
+## 16. Checklist reskin — bổ sung sau reskin #2
+
+- [ ] Rename **keyframes camelCase** + mọi `animation:` tham chiếu (sed prefix không bắt).
+- [ ] Đổi **localStorage key mùa** (`<app>_season`) trong season-picker.
+- [ ] Verify: `grep -c "<prefix_cũ>-"` = 0 **và** `grep -oE "<prefix_cũ>[A-Za-z]+"` rỗng.
+- [ ] Đối chiếu class blueprint cần dùng có mặt trong shell.css (script for-loop grep).
+- [ ] Đèn/badge ngữ nghĩa (pace, nợ, segment) dùng **semantic color**, không màu mùa.
+- [ ] Component mới sinh ra trong app → **append vào file này** để portal sau kế thừa.
+
+---
+
+*Nguồn: NPP Portal `npp/public/npp/shell.css` (hệ gốc) + PKD Dashboard
+`pkd/public/pkd/shell.css` (reskin #2, prefix `kd-`, thêm Mục 15). Đồng bộ file
+này khi shell.css đổi token/thêm component để các portal sau kế thừa đúng phong cách.*
