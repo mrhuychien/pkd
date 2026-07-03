@@ -16,6 +16,7 @@ function pctBadge(v) {
 export async function render({ container }) {
     container.innerHTML = html`
         ${banner({ title: 'Kênh MT', subtitle: 'Chuỗi siêu thị — sell-in, nhiễu theo PO (ưu tiên trailing 3 tháng)' })}
+        <a href="#/ql-ov?k=mt" class="kd-cta-block"><i class="fas fa-toolbox"></i><span>Quản lý kênh MT (phân tích sâu)</span><i class="fas fa-chevron-right"></i></a>
         <div id="kd-mt-body"><div class="kd-skeleton" style="height:400px;"></div></div>
     `;
     try {

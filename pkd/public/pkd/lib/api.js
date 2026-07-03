@@ -44,6 +44,25 @@ export const getTargets          = (nam)      => call('pkd.api.targets.get_targe
 export const saveTarget          = (data)     => call('pkd.api.targets.save_target', { data });
 export const getTargetAttainment = (nam, thang) => call('pkd.api.targets.get_target_attainment', { nam, thang });
 
+// Quản lý kênh (port từ npp.api.manager — channel-aware)
+export const mgr = {
+    overview:        (k, months)          => call('pkd.api.manager.overview', { channel: k, months }),
+    products:        (k, months)          => call('pkd.api.manager.products', { channel: k, months }),
+    skuWhiteSpace:   (k, item_code, months) => call('pkd.api.manager.sku_white_space', { channel: k, item_code, months }),
+    whiteSpace:      (k, item_group, months) => call('pkd.api.manager.white_space', { channel: k, item_group, months }),
+    targets:         (k, months)          => call('pkd.api.manager.targets', { channel: k, months }),
+    setTarget:       (customer, amount)   => call('pkd.api.manager.set_target', { customer, amount }),
+    setTargetsBulk:  (data)               => call('pkd.api.manager.set_targets_bulk', { data }),
+    receivables:     (k)                  => call('pkd.api.manager.receivables', { channel: k }),
+    insights:        (k)                  => call('pkd.api.manager.insights', { channel: k }),
+    actionCenter:    (k)                  => call('pkd.api.manager.action_center', { channel: k }),
+    slowSkus:        (k, days)            => call('pkd.api.manager.slow_skus', { channel: k, days }),
+    catalogDepth:    (k, months)          => call('pkd.api.manager.catalog_depth', { channel: k, months }),
+    customerList:    (k)                  => call('pkd.api.manager.customer_list', { channel: k }),
+    customerDetail:  (k, customer, months) => call('pkd.api.manager.customer_detail', { channel: k, customer, months }),
+    salesMatrix:     (k)                  => call('pkd.api.manager.sales_matrix', { channel: k }),
+};
+
 // P2
 export const getDisplaySummary   = ()          => call('pkd.api.display.get_display_summary');
 export const getTetDashboard     = (args)      => call('pkd.api.tet.get_tet_dashboard', args || {});

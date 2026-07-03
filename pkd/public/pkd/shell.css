@@ -954,3 +954,8 @@
     }
     .kd-desktop-nav a.kd-active { background: var(--kd-season-grad); color: #fff; border-color: transparent; }
 }
+
+/* Quản lý kênh — hàng pills chọn kênh (đậm hơn hàng tab thường) */
+.kd-ql-channels { margin-bottom: 4px; }
+.kd-ql-channels a { font-weight: 800; }
+.kd-ql-channels a.kd-active { box-shadow: var(--kd-shadow-md); }

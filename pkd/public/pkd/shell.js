@@ -40,6 +40,14 @@ const VIEW_MODULES = {
     '/chitieu'  : () => import(withV('./views/chitieu.js')),
     '/khampha'  : () => import(withV('./views/khampha.js')),
     '/khach'    : () => import(withV('./views/khach.js')),
+    // Bộ "Quản lý kênh" (port từ app npp) — kênh chọn qua ?k=npp|mt|dulich
+    '/ql-ov'    : () => import(withV('./views/ql-tongquan.js')),
+    '/ql-sp'    : () => import(withV('./views/ql-sanpham.js')),
+    '/ql-khach' : () => import(withV('./views/ql-khach.js')),
+    '/ql-target': () => import(withV('./views/ql-target.js')),
+    '/ql-alert' : () => import(withV('./views/ql-alert.js')),
+    '/ql-debt'  : () => import(withV('./views/ql-debt.js')),
+    '/ql-ds'    : () => import(withV('./views/ql-ds.js')),
 };
 
 const TITLES = {
@@ -53,6 +61,13 @@ const TITLES = {
     '/chitieu'  : 'Chỉ tiêu',
     '/khampha'  : 'Khám phá',
     '/khach'    : 'Chi tiết khách',
+    '/ql-ov'    : 'Quản lý kênh',
+    '/ql-sp'    : 'QL · Sản phẩm',
+    '/ql-khach' : 'QL · Chi tiết KH',
+    '/ql-target': 'QL · Mục tiêu',
+    '/ql-alert' : 'QL · Cần xử lý',
+    '/ql-debt'  : 'QL · Công nợ',
+    '/ql-ds'    : 'QL · DS tháng',
 };
 
 async function renderRoute(routeKey, ctx) {
@@ -75,6 +90,7 @@ async function renderRoute(routeKey, ctx) {
 // ─── 5b. Desktop nav ngang (8 mục; CSS ẩn trên mobile) ─────────────────
 const DESK_NAV = [
     ['/', '🏠 Tổng quan'], ['/npp', '📦 NPP'], ['/mt', '🏬 MT'], ['/dulich', '🧳 Du lịch'],
+    ['/ql-ov', '🛠 Quản lý kênh'],
     ['/trungbay', '🎁 Trưng bày'], ['/tet', '🧧 Tết'], ['/chitieu', '🎯 Chỉ tiêu'], ['/khampha', '🔍 Khám phá'],
 ];
 (function buildDesktopNav() {
@@ -88,14 +104,16 @@ const DESK_NAV = [
     main.parentNode.insertBefore(nav, main);
 })();
 function highlightDesktopNav(path) {
-    const seg = '/' + (path.split('/')[1] || '');
+    let seg = '/' + (path.split('/')[1] || '');
+    if (seg.startsWith('/ql-')) seg = '/ql-ov';   // mọi tab QLK sáng mục "Quản lý kênh"
     document.querySelectorAll('#kd-desktop-nav a').forEach((a) => {
         a.classList.toggle('kd-active', a.dataset.route === seg);
     });
 }
 
 // ─── 6. Routes ─────────────────────────────────────────────────────────
-const simple = ['/', '/npp', '/mt', '/dulich', '/them', '/trungbay', '/tet', '/chitieu', '/khampha'];
+const simple = ['/', '/npp', '/mt', '/dulich', '/them', '/trungbay', '/tet', '/chitieu', '/khampha',
+                '/ql-ov', '/ql-sp', '/ql-khach', '/ql-target', '/ql-alert', '/ql-debt', '/ql-ds'];
 simple.forEach((r) => {
     router.add(r, ({ query }) => { highlightActiveRoute(r); return renderRoute(r, { query }); });
 });

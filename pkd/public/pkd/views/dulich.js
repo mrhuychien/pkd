@@ -11,6 +11,7 @@ const charts = chartRegistry();
 export async function render({ container }) {
     container.innerHTML = html`
         ${banner({ title: 'Kênh Du lịch', subtitle: 'Khách mới, tỷ lệ quay lại, khách quen im ắng' })}
+        <a href="#/ql-ov?k=dulich" class="kd-cta-block"><i class="fas fa-toolbox"></i><span>Quản lý kênh Du lịch (phân tích sâu)</span><i class="fas fa-chevron-right"></i></a>
         <div id="kd-dl-body"><div class="kd-skeleton" style="height:400px;"></div></div>
     `;
     try {

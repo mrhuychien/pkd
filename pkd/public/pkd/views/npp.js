@@ -33,6 +33,7 @@ function agingBar(b) {
 export async function render({ container }) {
     container.innerHTML = html`
         ${banner({ title: 'Kênh NPP', subtitle: 'Sức khoẻ nhà phân phối — coverage, vòng đời, tái đặt' })}
+        <a href="#/ql-ov?k=npp" class="kd-cta-block"><i class="fas fa-toolbox"></i><span>Quản lý kênh NPP (phân tích sâu)</span><i class="fas fa-chevron-right"></i></a>
         <div id="kd-npp-body"><div class="kd-skeleton" style="height:400px;"></div></div>
     `;
     try {
