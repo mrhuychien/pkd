@@ -973,3 +973,41 @@
 .kd-pager-btn:disabled { opacity: .35; cursor: default; }
 .kd-pager-btn:not(:disabled):active { background: var(--kd-surface-2); }
 .kd-pager-info { font-size: .82rem; font-weight: 600; color: var(--kd-text-2); }
+
+/* ═══ Kinh doanh chung (báo cáo quản trị theo năm tài chính) ═══ */
+/* Stat tile lớn — nền semantic ĐẶC, chữ trắng (bán ra/trả về/thực bán/tỷ lệ) */
+.kd-stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 768px) { .kd-stat-grid { grid-template-columns: repeat(4, 1fr); } }
+.kd-stat-tile {
+    border-radius: var(--kd-radius-md); padding: 14px 16px; color: #fff;
+    box-shadow: var(--kd-shadow-md);
+}
+.kd-stat-tile .kd-stat-label { font-size: .78rem; font-weight: 800; letter-spacing: .04em; opacity: .92; text-transform: uppercase; }
+.kd-stat-tile .kd-stat-value { font-size: 1.9rem; font-weight: 800; line-height: 1.15; }
+.kd-stat-tile .kd-stat-sub { font-size: .74rem; font-weight: 600; opacity: .85; }
+.kd-stat-success { background: linear-gradient(135deg, #059669, #10b981); }
+.kd-stat-danger  { background: linear-gradient(135deg, #dc2626, #ef4444); }
+.kd-stat-warning { background: linear-gradient(135deg, #d97706, #f59e0b); color: #1f2937; }
+.kd-stat-warning .kd-stat-label, .kd-stat-warning .kd-stat-sub { opacity: 1; color: #78350f; }
+
+/* Dải 12 tháng — tile nhỏ theo tháng năm tài chính */
+.kd-month-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+@media (min-width: 768px) { .kd-month-grid { grid-template-columns: repeat(12, 1fr); } }
+.kd-month-tile { border-radius: 10px; padding: 7px 6px; text-align: center; }
+.kd-month-tile .kd-month-label { font-size: .68rem; font-weight: 700; opacity: .8; }
+.kd-month-tile .kd-month-value { font-size: .95rem; font-weight: 800; }
+.kd-month-tile.success { background: rgba(16,185,129,.16); color: #047857; }
+.kd-month-tile.danger  { background: rgba(239,68,68,.14);  color: #b91c1c; }
+.kd-month-tile.muted   { background: var(--kd-surface-2);   color: var(--kd-text-3); }
+
+/* Panel mini theo kênh: nhập / trả / thực bán / tỷ lệ trả */
+.kd-mini-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+@media (min-width: 768px) { .kd-mini-grid { grid-template-columns: repeat(4, 1fr); } }
+.kd-mini-panel { background: var(--kd-surface); border: 1px solid var(--kd-border);
+    border-radius: var(--kd-radius-md); overflow: hidden; box-shadow: var(--kd-shadow-sm); }
+.kd-mini-panel .kd-mini-head { padding: 8px 12px; font-weight: 800; font-size: .85rem;
+    color: #fff; display: flex; align-items: center; gap: 6px; }
+.kd-mini-panel .kd-mini-row { display: flex; justify-content: space-between; gap: 8px;
+    padding: 7px 12px; border-top: 1px solid var(--kd-border); font-size: .8rem; }
+.kd-mini-panel .kd-mini-row span:first-child { color: var(--kd-text-2); font-weight: 600; }
+.kd-mini-panel .kd-mini-row span:last-child { font-weight: 800; }

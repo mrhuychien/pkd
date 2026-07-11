@@ -65,6 +65,9 @@ export const mgr = {
     mtOutletDetail:  (customer, outlet, months) => call('pkd.api.manager.mt_outlet_detail', { customer, outlet, months }),
 };
 
+// Kinh doanh chung (báo cáo quản trị năm tài chính)
+export const getBusinessReport   = (fiscal_year, channel) => call('pkd.api.report.get_business_report', { fiscal_year, channel });
+
 // P2
 export const getDisplaySummary   = ()          => call('pkd.api.display.get_display_summary');
 export const getTetDashboard     = (args)      => call('pkd.api.tet.get_tet_dashboard', args || {});
