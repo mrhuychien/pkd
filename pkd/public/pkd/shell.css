@@ -1018,3 +1018,17 @@
 .kd-gov-row:not(:has(+ .kd-gov-row)) { border-bottom: 0; }  /* :last-of-type không match — sau row cuối còn div ghi chú cùng tag */
 .kd-gov-row span:first-child { color: var(--kd-text-2); font-weight: 600; }
 .kd-gov-row b { font-weight: 800; }
+
+/* ─── Bản đồ doanh số VN (choropleth) ──────────────────────────────────────── */
+.kd-vnmap-wrap { position: relative; }
+.kd-vnmap-wrap svg { width: 100%; height: auto; max-height: 640px; display: block; margin: 0 auto; }
+.kd-vnmap-wrap svg path { stroke: #fff; stroke-width: .8; cursor: pointer; transition: filter .12s; }
+.kd-vnmap-wrap svg path:hover { filter: brightness(.85); stroke: var(--kd-text); }
+.kd-vnmap-tip { position: absolute; z-index: 5; pointer-events: none; min-width: 150px; max-width: 220px;
+    background: var(--kd-surface); border: 1px solid var(--kd-border); border-radius: 10px;
+    padding: 8px 10px; font-size: .8rem; line-height: 1.45; box-shadow: 0 6px 18px rgba(15,23,42,.14); }
+.kd-vnmap-legend { display: flex; flex-wrap: wrap; gap: 8px 12px; margin-top: 10px; font-size: .72rem;
+    color: var(--kd-text-2); font-weight: 600; }
+.kd-vnmap-leg { display: inline-flex; align-items: center; gap: 5px; }
+.kd-vnmap-leg i { width: 14px; height: 10px; border-radius: 3px; display: inline-block;
+    border: 1px solid var(--kd-border); }

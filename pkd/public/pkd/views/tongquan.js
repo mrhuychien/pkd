@@ -6,6 +6,7 @@ import { showToast } from '../components/toast.js';
 import { pagedTable } from '../components/data-table.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
 import { renderGovernance } from '../components/governance.js';
+import { renderVnMap } from '../components/vn-map.js';
 
 const charts = chartRegistry();
 const bcCharts = chartRegistry();   // chart của section Kinh doanh chung (re-render riêng)
@@ -246,6 +247,9 @@ async function loadBusinessReport() {
     bcCharts.destroy();   // destroy TRƯỚC khi skeleton detach canvas — tránh leak cả nhánh lỗi
     body.innerHTML = '<div class="kd-skeleton" style="height:320px;"></div>';
     try {
+        // Bản đồ tỉnh tải SONG SONG; lỗi riêng của nó không đánh sập cả section.
+        const provPromise = api.getProvinceSales(fySel.value || null, chSel.value || null)
+            .catch((err) => ({ __err: err.message }));
         const d = await api.getBusinessReport(fySel.value || null, chSel.value || null);
         if (seq !== _bcSeq) return;   // đã có request mới hơn → bỏ response cũ
         // Đổ options năm TC (1 lần, giữ lựa chọn)
@@ -255,6 +259,9 @@ async function loadBusinessReport() {
         }
         renderBusinessReport(body, d);
         await renderBusinessCharts(d);
+        const prov = await provPromise;
+        if (seq !== _bcSeq) return;
+        await renderProvinceBlock(prov);
     } catch (err) {
         if (seq !== _bcSeq) return;
         body.innerHTML = `<div class="kd-empty"><div class="kd-empty-icon">⚠️</div>
@@ -361,6 +368,14 @@ function renderBusinessReport(body, d) {
         <div class="kd-mini-grid">${miniPanels}</div>
 
         <div class="kd-grid-2 kd-mt-2">
+            <div class="kd-card"><h3 class="kd-font-bold">🗺 Bản đồ doanh số toàn quốc</h3>
+                <div id="kd-bc-map" class="kd-mt-2"><div class="kd-skeleton" style="height:380px;"></div></div>
+                <div id="kd-bc-map-note" class="kd-text-sm kd-text-muted kd-mt-2"></div></div>
+            <div class="kd-card"><h3 class="kd-font-bold kd-mb-2">Doanh số theo tỉnh <span class="kd-text-muted kd-text-sm">(34 tỉnh sau sáp nhập)</span></h3>
+                <div id="kd-bc-prov"><div class="kd-skeleton" style="height:240px;"></div></div></div>
+        </div>
+
+        <div class="kd-grid-2 kd-mt-2">
             <div class="kd-card"><h3 class="kd-font-bold">Bán ra các kênh theo tháng</h3>
                 <div class="kd-chart-wrap"><canvas id="kd-bc-ch-gross"></canvas></div></div>
             <div class="kd-card"><h3 class="kd-font-bold">Trả về các kênh theo tháng</h3>
@@ -394,6 +409,41 @@ function renderBusinessReport(body, d) {
             </div>
         </div>
     `;
+}
+
+// ═══ Bản đồ doanh số theo tỉnh (nguồn: pkd.api.geo.get_province_sales) ═══
+async function renderProvinceBlock(p) {
+    const mapEl = document.getElementById('kd-bc-map');
+    const tblEl = document.getElementById('kd-bc-prov');
+    const noteEl = document.getElementById('kd-bc-map-note');
+    if (!mapEl || !tblEl) return;
+    if (p && p.__err) {
+        mapEl.innerHTML = `<div class="kd-text-muted kd-text-sm">Không tải được doanh số theo tỉnh: ${escapeHtml(p.__err)}</div>`;
+        tblEl.innerHTML = '';
+        return;
+    }
+    const rows = p.provinces || [];
+    tblEl.innerHTML = pagedTable({
+        columns: [
+            { key: 'province', label: 'Tỉnh/TP', render: (r) => escapeHtml(r.province) },
+            { key: 'net', label: 'Thực bán', render: (r) => formatVNDShort(r.net) },
+            { key: 'share_pct', label: '%', render: (r) => r.share_pct != null ? r.share_pct.toFixed(1) + '%' : '—' },
+            { key: 'buyers', label: 'Khách', render: (r) => formatNumber(r.buyers) },
+        ], rows,
+        emptyMessage: 'Chưa có doanh số trong kỳ',
+    });
+    const srcLabel = p.source === 'customer'
+        ? 'suy từ hồ sơ khách (hoá đơn CHƯA có cột tỉnh — tạo Custom Field custom_tinh trên Sales Invoice để chính xác hơn)'
+        : `cột <code>${escapeHtml(p.source)}</code> trên hoá đơn`;
+    const um = p.unmatched || [];
+    const umNet = um.reduce((s, u) => s + (u.net || 0), 0);
+    noteEl.innerHTML = `Nguồn tỉnh: ${srcLabel} · gộp theo <b>34 tỉnh/TP sau sáp nhập 07/2025</b> (ranh giới hiển thị là 63 tỉnh cũ, các phần cùng tỉnh mới tô cùng màu).`
+        + (um.length ? `<br>⚠ ${um.length} giá trị tỉnh không nhận diện được (${formatVNDShort(umNet)}): ${um.slice(0, 5).map((u) => escapeHtml(u.raw)).join(', ')}${um.length > 5 ? '…' : ''} — chuẩn hoá lại dữ liệu nhập.` : '');
+    try {
+        await renderVnMap(mapEl, rows);
+    } catch (err) {
+        mapEl.innerHTML = `<div class="kd-text-muted kd-text-sm">Không vẽ được bản đồ: ${escapeHtml(err.message)}</div>`;
+    }
 }
 
 async function renderBusinessCharts(d) {

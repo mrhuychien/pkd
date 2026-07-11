@@ -71,6 +71,9 @@ export const getBusinessReport   = (fiscal_year, channel) => call('pkd.api.repor
 // Giám sát & sức khoẻ kinh doanh (roster; channel null = toàn công ty)
 export const getGovernance       = (channel) => call('pkd.api.governance.get_governance', { channel });
 
+// Doanh số theo tỉnh cho bản đồ toàn quốc (chuẩn hoá 34 tỉnh mới)
+export const getProvinceSales    = (fiscal_year, channel) => call('pkd.api.geo.get_province_sales', { fiscal_year, channel });
+
 // P2
 export const getDisplaySummary   = ()          => call('pkd.api.display.get_display_summary');
 export const getTetDashboard     = (args)      => call('pkd.api.tet.get_tet_dashboard', args || {});
