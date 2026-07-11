@@ -6,9 +6,11 @@ import { paged } from '../components/data-table.js';
 import { qlNav, channelOf, CHANNEL_LABEL, CHANNEL_NOUN } from '../components/ql-nav.js';
 import { salesMatrixHtml } from '../components/sales-matrix.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
+import { renderGovernance } from '../components/governance.js';
 
 // ─── Tổng quan QUẢN LÝ KÊNH (port từ npp quan-ly.js, channel-aware ?k=) ─────
 const charts = chartRegistry();
+const govCharts = chartRegistry();   // panel giám sát — re-render riêng
 let _rows = [];
 let _k = 'npp';
 
@@ -48,6 +50,9 @@ export async function render({ container, query }) {
             <div class="kd-card"><h3 class="kd-font-bold">Mức độ tập trung (Pareto)</h3><div id="kd-ql-conc" class="kd-mt-2"></div></div>
         </div>
 
+        <h3 class="kd-font-bold kd-mt-3">🩺 Giám sát &amp; sức khoẻ kênh</h3>
+        <div id="kd-ql-gov" class="kd-mt-2"><div class="kd-skeleton" style="height:320px;"></div></div>
+
         <div class="kd-card kd-mt-3">
             <h3 class="kd-font-bold">Danh sách ${noun}</h3>
             <div class="kd-ql-filters kd-mt-3">
@@ -63,7 +68,23 @@ export async function render({ container, query }) {
     ['kd-ql-search', 'kd-ql-f-rank', 'kd-ql-f-seg'].forEach((id) =>
         document.getElementById(id).addEventListener('input', applyFilters));
     await loadData(3);
-    loadMatrix();   // bảng DS theo tháng — theo năm tài chính, độc lập bộ lọc kỳ
+    loadMatrix();     // bảng DS theo tháng — theo năm tài chính, độc lập bộ lọc kỳ
+    loadGovernance(); // panel giám sát — kênh cố định, độc lập bộ lọc kỳ
+}
+
+async function loadGovernance() {
+    const body = document.getElementById('kd-ql-gov');
+    if (!body) return;
+    govCharts.destroy();   // destroy TRƯỚC khi đổi nội dung (chống leak khi đổi kênh)
+    try {
+        const d = await api.getGovernance(_k);
+        // So IDENTITY (không chỉ tồn tại id): render mới tạo node #kd-ql-gov MỚI —
+        // response cũ về muộn phải bỏ, không được vẽ đè lên node mới.
+        if (document.getElementById('kd-ql-gov') !== body) return;
+        await renderGovernance(body, d, govCharts);
+    } catch (err) {
+        body.innerHTML = `<div class="kd-card"><div class="kd-text-muted">Không tải được bộ giám sát: ${escapeHtml(err.message)}</div></div>`;
+    }
 }
 
 async function loadMatrix() {

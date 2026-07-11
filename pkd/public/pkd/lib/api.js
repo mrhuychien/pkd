@@ -68,6 +68,9 @@ export const mgr = {
 // Kinh doanh chung (báo cáo quản trị năm tài chính)
 export const getBusinessReport   = (fiscal_year, channel) => call('pkd.api.report.get_business_report', { fiscal_year, channel });
 
+// Giám sát & sức khoẻ kinh doanh (roster; channel null = toàn công ty)
+export const getGovernance       = (channel) => call('pkd.api.governance.get_governance', { channel });
+
 // P2
 export const getDisplaySummary   = ()          => call('pkd.api.display.get_display_summary');
 export const getTetDashboard     = (args)      => call('pkd.api.tet.get_tet_dashboard', args || {});

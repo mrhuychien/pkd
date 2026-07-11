@@ -69,6 +69,52 @@ def _channel_key(cmap: dict, grp: str) -> str:
 	return cmap.get(grp) or "khac"
 
 
+def _rate(g, ret):
+	"""Tỷ lệ trả về % (returns mang dấu âm) — None khi chưa có bán ra."""
+	return round(-flt(ret) / flt(g) * 100, 2) if flt(g) else None
+
+
+def _window_agg(start, end, cmap: dict, channel: str | None, month_keys: list[str]) -> dict:
+	"""Gom 1 cửa sổ FY từ 1 query invoice-level: tổng/tháng (áp filter kênh)
+	+ kênh/kênh×tháng (LUÔN đủ 4 kênh — khối so sánh không áp filter)."""
+	rows = frappe.db.sql(
+		"""
+		SELECT DATE_FORMAT(si.posting_date, '%%Y-%%m') AS ym,
+		       si.customer_group AS grp,
+		       IF(si.is_return = 1, 1, 0) AS ret,
+		       COALESCE(SUM(si.grand_total), 0) AS amt
+		FROM `tabSales Invoice` si
+		WHERE si.docstatus = 1
+		  AND IFNULL(si.is_opening, 'No') != 'Yes'
+		  AND si.posting_date BETWEEN %(s)s AND %(e)s
+		GROUP BY ym, grp, ret
+		""",
+		{"s": start, "e": end},
+		as_dict=True,
+	)
+	gross = returns = 0.0
+	m_gross = {k: 0.0 for k in month_keys}
+	m_returns = {k: 0.0 for k in month_keys}
+	ch_tot = {k: {"gross": 0.0, "returns": 0.0} for k, _ in BC_CHANNELS}
+	ch_m_gross = {k: {mk: 0.0 for mk in month_keys} for k, _ in BC_CHANNELS}
+	ch_m_returns = {k: {mk: 0.0 for mk in month_keys} for k, _ in BC_CHANNELS}
+	for r in rows:
+		key = _channel_key(cmap, r.grp)
+		amt = flt(r.amt)
+		ch_tot[key]["returns" if r.ret else "gross"] += amt
+		if r.ym in m_gross:
+			(ch_m_returns if r.ret else ch_m_gross)[key][r.ym] += amt
+		if (channel is None) or (key == channel):
+			if r.ret:
+				returns += amt
+			else:
+				gross += amt
+			if r.ym in m_gross:
+				(m_returns if r.ret else m_gross)[r.ym] += amt
+	return {"gross": gross, "returns": returns, "m_gross": m_gross, "m_returns": m_returns,
+		"ch_tot": ch_tot, "ch_m_gross": ch_m_gross, "ch_m_returns": ch_m_returns}
+
+
 def _group_filter_sql(channel: str | None, cmap: dict, params: dict) -> str:
 	"""Mảnh WHERE lọc kênh (literal cố định; giá trị qua %(...)s). '' = không lọc."""
 	if not channel:
@@ -102,61 +148,53 @@ def get_business_report(fiscal_year=None, channel=None):
 	month_keys = [m["key"] for m in months]
 	cmap = channel_map()
 
-	# ── 1 query invoice-level cho: tổng, tháng, kênh, kênh×tháng ────────────
-	rows = frappe.db.sql(
-		"""
-		SELECT DATE_FORMAT(si.posting_date, '%%Y-%%m') AS ym,
-		       si.customer_group AS grp,
-		       IF(si.is_return = 1, 1, 0) AS ret,
-		       COALESCE(SUM(si.grand_total), 0) AS amt
-		FROM `tabSales Invoice` si
-		WHERE si.docstatus = 1
-		  AND IFNULL(si.is_opening, 'No') != 'Yes'
-		  AND si.posting_date BETWEEN %(s)s AND %(e)s
-		GROUP BY ym, grp, ret
-		""",
-		{"s": start, "e": end},
-		as_dict=True,
-	)
-
-	def in_filter(grp):
-		return (channel is None) or (_channel_key(cmap, grp) == channel)
-
-	gross = returns = 0.0
-	m_gross = {k: 0.0 for k in month_keys}
-	m_returns = {k: 0.0 for k in month_keys}
-	ch_tot = {k: {"gross": 0.0, "returns": 0.0} for k, _ in BC_CHANNELS}
-	ch_m_gross = {k: {mk: 0.0 for mk in month_keys} for k, _ in BC_CHANNELS}
-	ch_m_returns = {k: {mk: 0.0 for mk in month_keys} for k, _ in BC_CHANNELS}
-	for r in rows:
-		key = _channel_key(cmap, r.grp)
-		amt = flt(r.amt)
-		bucket = "returns" if r.ret else "gross"
-		# Khối so sánh kênh: LUÔN đủ 4 kênh (không áp filter).
-		ch_tot[key][bucket] += amt
-		if r.ym in m_gross:
-			(ch_m_returns if r.ret else ch_m_gross)[key][r.ym] += amt
-		# Khối tổng/tháng: áp filter kênh.
-		if in_filter(r.grp):
-			if r.ret:
-				returns += amt
-			else:
-				gross += amt
-			if r.ym in m_gross:
-				(m_returns if r.ret else m_gross)[r.ym] += amt
-
-	def rate(g, ret):
-		return round(-flt(ret) / flt(g) * 100, 2) if flt(g) else None
+	# ── Cửa sổ FY hiện tại: tổng, tháng, kênh, kênh×tháng ───────────────────
+	agg = _window_agg(start, end, cmap, channel, month_keys)
+	gross, returns = agg["gross"], agg["returns"]
+	m_gross, m_returns = agg["m_gross"], agg["m_returns"]
+	ch_tot = agg["ch_tot"]
+	ch_m_gross, ch_m_returns = agg["ch_m_gross"], agg["ch_m_returns"]
 
 	channels = [
 		{
 			"key": k, "label": label,
 			"gross": ch_tot[k]["gross"], "returns": ch_tot[k]["returns"],
 			"net": ch_tot[k]["gross"] + ch_tot[k]["returns"],
-			"return_rate_pct": rate(ch_tot[k]["gross"], ch_tot[k]["returns"]),
+			"return_rate_pct": _rate(ch_tot[k]["gross"], ch_tot[k]["returns"]),
 		}
 		for k, label in BC_CHANNELS
 	]
+
+	# ── FY TRƯỚC (cùng bộ lọc kênh) — nguồn YoY / overlay / luỹ kế ─────────
+	idx = next((i for i, f in enumerate(fys) if f["name"] == fy["name"]), None)
+	prev_fy = fys[idx + 1] if (idx is not None and idx + 1 < len(fys)) else None
+	if prev_fy:
+		p_start, p_end = getdate(prev_fy["year_start_date"]), getdate(prev_fy["year_end_date"])
+		prev_name = prev_fy["name"]
+	else:
+		# Site chưa khai FY trước → dịch nguyên cửa sổ lùi 12 tháng
+		# (hoá đơn cũ vẫn có trong DB dù FY chưa được khai).
+		p_start, p_end = add_months(start, -12), add_months(end, -12)
+		prev_name = None
+	prev_months = _month_list(p_start, p_end)
+	agg_p = _window_agg(p_start, p_end, cmap, channel, [m["key"] for m in prev_months])
+	prev = {
+		"fiscal_year": prev_name,
+		"period": {"start": str(getdate(p_start)), "end": str(getdate(p_end))},
+		"totals": {
+			"gross": agg_p["gross"], "returns": agg_p["returns"],
+			"net": agg_p["gross"] + agg_p["returns"],
+			"return_rate_pct": _rate(agg_p["gross"], agg_p["returns"]),
+		},
+		"months": [
+			{"key": m["key"], "label": m["label"],
+			 "gross": agg_p["m_gross"][m["key"]], "returns": agg_p["m_returns"][m["key"]]}
+			for m in prev_months
+		],
+		"channels_net": {
+			k: agg_p["ch_tot"][k]["gross"] + agg_p["ch_tot"][k]["returns"] for k, _ in BC_CHANNELS
+		},
+	}
 
 	# ── Ngành hàng: Hàng Tết vs truyền thống (net, line-level) ──────────────
 	params: dict = {"s": start, "e": end}
@@ -253,8 +291,9 @@ def get_business_report(fiscal_year=None, channel=None):
 			"gross": gross,
 			"returns": returns,
 			"net": gross + returns,
-			"return_rate_pct": rate(gross, returns),
+			"return_rate_pct": _rate(gross, returns),
 		},
+		"prev": prev,
 		"months": [
 			{"key": m["key"], "label": m["label"], "gross": m_gross[m["key"]], "returns": m_returns[m["key"]]}
 			for m in months

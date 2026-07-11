@@ -1011,3 +1011,10 @@
     padding: 7px 12px; border-top: 1px solid var(--kd-border); font-size: .8rem; }
 .kd-mini-panel .kd-mini-row span:first-child { color: var(--kd-text-2); font-weight: 600; }
 .kd-mini-panel .kd-mini-row span:last-child { font-weight: 800; }
+
+/* ─── Giám sát & sức khoẻ kinh doanh (governance) ──────────────────────────── */
+.kd-gov-row { display: flex; justify-content: space-between; gap: 8px;
+    padding: 7px 0; border-bottom: 1px dashed var(--kd-border); font-size: .88rem; }
+.kd-gov-row:not(:has(+ .kd-gov-row)) { border-bottom: 0; }  /* :last-of-type không match — sau row cuối còn div ghi chú cùng tag */
+.kd-gov-row span:first-child { color: var(--kd-text-2); font-weight: 600; }
+.kd-gov-row b { font-weight: 800; }

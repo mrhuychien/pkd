@@ -5,9 +5,11 @@ import { banner } from '../components/banner.js';
 import { showToast } from '../components/toast.js';
 import { pagedTable } from '../components/data-table.js';
 import { loadChartLib, chartRegistry } from '../components/chart.js';
+import { renderGovernance } from '../components/governance.js';
 
 const charts = chartRegistry();
 const bcCharts = chartRegistry();   // chart của section Kinh doanh chung (re-render riêng)
+const govCharts = chartRegistry();  // chart của section Giám sát (re-render riêng)
 
 // Màu kênh CỐ ĐỊNH xuyên mọi chart (đã qua validator palette — màu theo thực thể).
 const CH_COLORS = { npp: '#f59e0b', mt: '#10b981', dulich: '#3b82f6', khac: '#ec4899' };
@@ -68,11 +70,25 @@ export async function render({ container }) {
             </div>
         </div>
         <div id="kd-bc-body" class="kd-mt-2"><div class="kd-skeleton" style="height:320px;"></div></div>
+
+        <!-- ═══ Giám sát & sức khoẻ kinh doanh (roster; 90N aligned + 12 tháng) ═══ -->
+        <div class="kd-flex kd-items-center kd-justify-between kd-mt-3" style="flex-wrap:wrap;gap:8px;">
+            <h3 class="kd-font-bold">🩺 Giám sát &amp; sức khoẻ kinh doanh</h3>
+            <div class="kd-filter-bar">
+                <label>Phạm vi <select id="kd-gov-channel">
+                    <option value="">Toàn công ty</option><option value="npp">NPP</option>
+                    <option value="mt">MT</option><option value="dulich">Du lịch</option>
+                </select></label>
+            </div>
+        </div>
+        <div id="kd-gov-body" class="kd-mt-2"><div class="kd-skeleton" style="height:320px;"></div></div>
     `;
 
     document.getElementById('kd-bc-channel').addEventListener('change', () => loadBusinessReport());
     document.getElementById('kd-bc-fy').addEventListener('change', () => loadBusinessReport());
+    document.getElementById('kd-gov-channel').addEventListener('change', () => loadGovernance());
     loadBusinessReport();   // tải song song với overview
+    loadGovernance();
 
     try {
         const [ov, q] = await Promise.all([
@@ -247,10 +263,36 @@ async function loadBusinessReport() {
     }
 }
 
+// ═══ Giám sát & sức khoẻ (component dùng chung) ═══
+let _govSeq = 0;
+async function loadGovernance() {
+    const body = document.getElementById('kd-gov-body');
+    if (!body) return;
+    const seq = ++_govSeq;
+    const sel = document.getElementById('kd-gov-channel');
+    govCharts.destroy();   // destroy TRƯỚC khi skeleton detach canvas
+    body.innerHTML = '<div class="kd-skeleton" style="height:320px;"></div>';
+    try {
+        const d = await api.getGovernance(sel.value || null);
+        if (seq !== _govSeq) return;   // response cũ → bỏ
+        await renderGovernance(body, d, govCharts);
+    } catch (err) {
+        if (seq !== _govSeq) return;
+        body.innerHTML = `<div class="kd-empty"><div class="kd-empty-icon">⚠️</div>
+            <div class="kd-empty-title">Không tải được bộ giám sát</div>
+            <div class="kd-text-sm">${escapeHtml(err.message)}</div></div>`;
+    }
+}
+
 function bcRate(v) { return v == null ? '—' : v.toFixed(2) + '%'; }
+
+// YoY so FY trước — mẫu 0/null → null (FE hiện "—"); |prev| để an toàn khi net âm.
+function bcYoy(cur, prev) { return prev ? ((cur || 0) - prev) / Math.abs(prev) * 100 : null; }
 
 function renderBusinessReport(body, d) {
     const t = d.totals || {};
+    const pv = (d.prev || {}).totals || {};
+    const prevLabel = (d.prev || {}).fiscal_year || 'cùng kỳ 12T trước';
     const filtered = d.channel ? ` · kênh ${escapeHtml(document.querySelector(`#kd-bc-channel option[value="${d.channel}"]`)?.textContent || d.channel)}` : '';
 
     const monthTiles = (key, cls0) => (d.months || []).map((m) => {
@@ -261,6 +303,7 @@ function renderBusinessReport(body, d) {
             <div class="kd-month-value">${trieu(v)}</div></div>`;
     }).join('');
 
+    const pvCh = (d.prev || {}).channels_net || {};
     const miniPanels = (d.channels || []).map((c) => `
         <div class="kd-mini-panel">
             <div class="kd-mini-head" style="background:${CH_COLORS[c.key] || '#64748b'};">${escapeHtml(c.label)}</div>
@@ -268,24 +311,25 @@ function renderBusinessReport(body, d) {
             <div class="kd-mini-row"><span>Trả về</span><span style="color:var(--kd-danger);">${trieu(c.returns)}</span></div>
             <div class="kd-mini-row"><span>Thực bán</span><span>${trieu(c.net)}</span></div>
             <div class="kd-mini-row"><span>Tỷ lệ trả</span><span style="color:${(c.return_rate_pct || 0) >= 10 ? 'var(--kd-danger)' : 'var(--kd-warning)'};">${bcRate(c.return_rate_pct)}</span></div>
+            <div class="kd-mini-row"><span>vs năm trước</span><span>${pctBadge(bcYoy(c.net, pvCh[c.key]))}</span></div>
         </div>`).join('');
 
     body.innerHTML = html`
-        <div class="kd-text-sm kd-text-muted kd-mb-2">Năm tài chính ${escapeHtml(d.fiscal_year)} (${formatDate(d.period.start)} → ${formatDate(d.period.end)})${filtered} · đơn vị: triệu đồng · trả về = hoá đơn is_return</div>
+        <div class="kd-text-sm kd-text-muted kd-mb-2">Năm tài chính ${escapeHtml(d.fiscal_year)} (${formatDate(d.period.start)} → ${formatDate(d.period.end)})${filtered} · đơn vị: triệu đồng · trả về = hoá đơn is_return · so sánh với ${escapeHtml(prevLabel)}</div>
 
         <div class="kd-stat-grid">
             <div class="kd-stat-tile kd-stat-success"><div class="kd-stat-label">Doanh số bán ra</div>
                 <div class="kd-stat-value" title="${formatVNDShort(t.gross)}">${trieu(t.gross)}</div>
-                <div class="kd-stat-sub">triệu đ · cả năm TC</div></div>
+                <div class="kd-stat-sub">${pctBadge(bcYoy(t.gross, pv.gross))} vs năm trước</div></div>
             <div class="kd-stat-tile kd-stat-danger"><div class="kd-stat-label">Doanh số trả về</div>
                 <div class="kd-stat-value" title="${formatVNDShort(t.returns)}">${trieu(t.returns)}</div>
-                <div class="kd-stat-sub">triệu đ</div></div>
+                <div class="kd-stat-sub">năm trước: ${trieu(pv.returns)}</div></div>
             <div class="kd-stat-tile kd-stat-success"><div class="kd-stat-label">Doanh số thực bán</div>
                 <div class="kd-stat-value" title="${formatVNDShort(t.net)}">${trieu(t.net)}</div>
-                <div class="kd-stat-sub">triệu đ = bán ra − trả về</div></div>
+                <div class="kd-stat-sub">${pctBadge(bcYoy(t.net, pv.net))} vs năm trước (${trieu(pv.net)})</div></div>
             <div class="kd-stat-tile kd-stat-warning"><div class="kd-stat-label">Tỷ lệ trả (%)</div>
                 <div class="kd-stat-value">${bcRate(t.return_rate_pct)}</div>
-                <div class="kd-stat-sub">|trả về| ÷ bán ra</div></div>
+                <div class="kd-stat-sub">năm trước: ${bcRate(pv.return_rate_pct)}</div></div>
         </div>
 
         <div class="kd-card kd-mt-2"><h4 class="kd-font-bold kd-text-sm kd-mb-2">Doanh số bán ra theo tháng</h4>
@@ -295,6 +339,10 @@ function renderBusinessReport(body, d) {
 
         <div class="kd-card kd-mt-2"><h3 class="kd-font-bold">Bán ra & trả về theo tháng (triệu đ)</h3>
             <div class="kd-chart-wrap"><canvas id="kd-bc-inout"></canvas></div></div>
+
+        <div class="kd-card kd-mt-2"><h3 class="kd-font-bold">Luỹ kế thực bán — năm nay vs năm trước (triệu đ)</h3>
+            <div class="kd-chart-wrap"><canvas id="kd-bc-cum"></canvas></div>
+            <div class="kd-text-sm kd-text-muted kd-mt-2">So theo THỨ TỰ tháng trong năm tài chính (T1 của FY này ↔ T1 của FY trước) — khoảng cách 2 đường là mức tăng/giảm tích luỹ.</div></div>
 
         <div class="kd-grid-2 kd-mt-2">
             <div class="kd-card"><h3 class="kd-font-bold">Tỷ trọng theo ngành hàng (thực bán)</h3>
@@ -360,13 +408,39 @@ async function renderBusinessCharts(d) {
         scales: { y: { ticks: { callback: (v) => formatNumber(v) } } },
     };
 
-    // 1) Bán ra (dương) & trả về (âm) theo tháng — 1 trục y chung.
+    // Chuỗi FY trước align theo THỨ TỰ tháng (index) — độ dài có thể lệch (FY 13 bucket).
+    const prevMonths = ((d.prev || {}).months) || [];
+    const prevLabel = (d.prev || {}).fiscal_year || 'năm trước';
+    const prevNet = labels.map((_, i) =>
+        prevMonths[i] ? M((prevMonths[i].gross || 0) + (prevMonths[i].returns || 0)) : null);
+
+    // 1) Bán ra (dương) & trả về (âm) theo tháng — 1 trục y chung + nét đứt xám
+    //    "thực bán năm trước" làm mốc so sánh (màu trung tính, không tranh chấp).
     const el1 = document.getElementById('kd-bc-inout');
     if (el1) bcCharts.add(new Chart(el1, {
         type: 'bar',
         data: { labels, datasets: [
-            { label: 'Bán ra', data: (d.months || []).map((m) => M(m.gross)), backgroundColor: '#10b981', borderRadius: 4 },
-            { label: 'Trả về', data: (d.months || []).map((m) => M(m.returns)), backgroundColor: '#ef4444', borderRadius: 4 },
+            { label: 'Bán ra', data: (d.months || []).map((m) => M(m.gross)), backgroundColor: '#10b981', borderRadius: 4, order: 2 },
+            { label: 'Trả về', data: (d.months || []).map((m) => M(m.returns)), backgroundColor: '#ef4444', borderRadius: 4, order: 2 },
+            { type: 'line', label: `Thực bán ${prevLabel}`, data: prevNet, borderColor: '#94a3b8',
+              backgroundColor: 'transparent', borderDash: [6, 4], pointRadius: 2, tension: 0.25, spanGaps: true, order: 1 },
+        ] },
+        options: commonBar,
+    }));
+
+    // 1b) Luỹ kế thực bán năm nay vs năm trước (2 đường, cùng index tháng).
+    const cum = (arr) => { let s = 0; return arr.map((v) => (v == null ? null : (s += v))); };
+    const cumCur = cum((d.months || []).map((m) => M((m.gross || 0) + (m.returns || 0))));
+    const cumPrevAll = cum(prevMonths.map((m) => M((m.gross || 0) + (m.returns || 0))));
+    const cumPrev = labels.map((_, i) => (cumPrevAll[i] != null ? cumPrevAll[i] : null));
+    const elc = document.getElementById('kd-bc-cum');
+    if (elc) bcCharts.add(new Chart(elc, {
+        type: 'line',
+        data: { labels, datasets: [
+            { label: `Luỹ kế ${d.fiscal_year}`, data: cumCur, borderColor: '#3b82f6',
+              backgroundColor: 'rgba(59,130,246,.08)', fill: true, tension: 0.25, pointRadius: 2 },
+            { label: `Luỹ kế ${prevLabel}`, data: cumPrev, borderColor: '#94a3b8',
+              backgroundColor: 'transparent', borderDash: [6, 4], tension: 0.25, pointRadius: 2, spanGaps: true },
         ] },
         options: commonBar,
     }));
