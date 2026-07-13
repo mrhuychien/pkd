@@ -322,7 +322,7 @@ function renderBusinessReport(body, d) {
         </div>`).join('');
 
     body.innerHTML = html`
-        <div class="kd-text-sm kd-text-muted kd-mb-2">Năm tài chính ${escapeHtml(d.fiscal_year)} (${formatDate(d.period.start)} → ${formatDate(d.period.end)})${filtered} · đơn vị: triệu đồng · trả về = hoá đơn is_return · so sánh với ${escapeHtml(prevLabel)}</div>
+        <div class="kd-text-sm kd-text-muted kd-mb-2">Năm tài chính ${escapeHtml(d.fiscal_year)} (${formatDate(d.period.start)} → ${formatDate(d.period.end)})${filtered} · đơn vị: triệu đồng · <b>doanh số CHƯA VAT</b> (net_total) · trả về = hoá đơn is_return · so sánh với ${escapeHtml(prevLabel)}</div>
 
         <div class="kd-stat-grid">
             <div class="kd-stat-tile kd-stat-success"><div class="kd-stat-label">Doanh số bán ra</div>
@@ -437,7 +437,7 @@ async function renderProvinceBlock(p) {
         : `cột <code>${escapeHtml(p.source)}</code> trên hoá đơn`;
     const um = p.unmatched || [];
     const umNet = um.reduce((s, u) => s + (u.net || 0), 0);
-    noteEl.innerHTML = `Nguồn tỉnh: ${srcLabel} · gộp theo <b>34 tỉnh/TP sau sáp nhập 07/2025</b> (ranh giới hiển thị là 63 tỉnh cũ, các phần cùng tỉnh mới tô cùng màu).`
+    noteEl.innerHTML = `Nguồn tỉnh: ${srcLabel} · doanh số chưa VAT · gộp theo <b>34 tỉnh/TP sau sáp nhập 07/2025</b> (ranh giới hiển thị là 63 tỉnh cũ, các phần cùng tỉnh mới tô cùng màu).`
         + (um.length ? `<br>⚠ ${um.length} giá trị tỉnh không nhận diện được (${formatVNDShort(umNet)}): ${um.slice(0, 5).map((u) => escapeHtml(u.raw)).join(', ')}${um.length > 5 ? '…' : ''} — chuẩn hoá lại dữ liệu nhập.` : '');
     try {
         await renderVnMap(mapEl, rows);

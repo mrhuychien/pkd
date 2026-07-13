@@ -69,10 +69,10 @@ def _series(cfg, measure, date_from, date_to, channel, item_group, limit) -> dic
 		where.append("sii.uom IN %(uoms)s")
 		frm = "`tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON si.name = sii.parent"
 	elif use_line:
-		val = "SUM(sii.amount)"
+		val = "SUM(sii.net_amount)"
 		frm = "`tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON si.name = sii.parent"
 	else:
-		val = "SUM(si.grand_total)"
+		val = "SUM(si.net_total)"
 		frm = "`tabSales Invoice` si"
 
 	grp = cfg["sql"]  # mảnh cố định từ whitelist DIMS

@@ -18,7 +18,7 @@ from pkd.api.utils import _guard, channel_of_group, get_settings, iso, pct
 def _series_12m_customer(customer, today):
 	rows = frappe.db.sql(
 		"""
-		SELECT DATE_FORMAT(si.posting_date, '%%Y-%%m') AS ym, SUM(si.grand_total) AS amt
+		SELECT DATE_FORMAT(si.posting_date, '%%Y-%%m') AS ym, SUM(si.net_total) AS amt
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1 AND IFNULL(si.is_opening, 'No') != 'Yes'
 		  AND si.customer = %(c)s AND si.posting_date BETWEEN %(s)s AND %(e)s
@@ -62,9 +62,9 @@ def get_customer_detail(customer):
 	st = frappe.db.sql(
 		"""
 		SELECT COUNT(*) AS orders, MIN(si.posting_date) AS first_o, MAX(si.posting_date) AS last_o,
-		       SUM(CASE WHEN si.posting_date > %(w90)s THEN si.grand_total ELSE 0 END) AS rev90,
-		       SUM(CASE WHEN si.posting_date > %(w180)s AND si.posting_date <= %(w90)s THEN si.grand_total ELSE 0 END) AS prev90,
-		       SUM(CASE WHEN si.posting_date > %(y1)s THEN si.grand_total ELSE 0 END) AS rev12
+		       SUM(CASE WHEN si.posting_date > %(w90)s THEN si.net_total ELSE 0 END) AS rev90,
+		       SUM(CASE WHEN si.posting_date > %(w180)s AND si.posting_date <= %(w90)s THEN si.net_total ELSE 0 END) AS prev90,
+		       SUM(CASE WHEN si.posting_date > %(y1)s THEN si.net_total ELSE 0 END) AS rev12
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1 AND IFNULL(si.is_opening, 'No') != 'Yes' AND si.customer = %(c)s
 		""",
@@ -116,7 +116,7 @@ def get_customer_detail(customer):
 	# SKU mix (12 tháng).
 	sku_rows = frappe.db.sql(
 		"""
-		SELECT sii.item_group AS ig, SUM(sii.amount) AS amt
+		SELECT sii.item_group AS ig, SUM(sii.net_amount) AS amt
 		FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON si.name = sii.parent
 		WHERE si.docstatus = 1 AND IFNULL(si.is_opening, 'No') != 'Yes'
 		  AND si.customer = %(c)s AND si.posting_date > %(y1)s
@@ -177,7 +177,7 @@ def get_customer_detail(customer):
 def _customer_outlets(customer, today):
 	rows = frappe.db.sql(
 		"""
-		SELECT si.shipping_address_name AS addr, SUM(si.grand_total) AS amt, MAX(si.posting_date) AS last_o
+		SELECT si.shipping_address_name AS addr, SUM(si.net_total) AS amt, MAX(si.posting_date) AS last_o
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1 AND IFNULL(si.is_opening, 'No') != 'Yes'
 		  AND si.customer = %(c)s AND si.posting_date > %(y1)s

@@ -56,7 +56,7 @@ export function governanceHtml(d) {
         <div class="kd-text-sm kd-text-muted kd-mb-2">
             Phạm vi: <b>${escapeHtml(meta.label || '')}</b> · tính đến ${escapeHtml(meta.asof || '')} ·
             tập khách theo <b>roster</b> (khách hiện thuộc kênh — có thể lệch nhẹ với "Kinh doanh chung" vốn theo nhóm ghi trên hoá đơn) ·
-            "rời bỏ" = quá ${meta.lost_days || 90} ngày không mua
+            doanh số chưa VAT · "rời bỏ" = quá ${meta.lost_days || 90} ngày không mua
         </div>
 
         <div class="kd-stat-grid">

@@ -60,9 +60,9 @@ def segment_map(groups: list[str], ref_date) -> dict:
 		SELECT si.customer AS cust,
 		       MAX(si.posting_date) AS last_order,
 		       MIN(si.posting_date) AS first_order,
-		       SUM(CASE WHEN si.posting_date > %(w90)s THEN si.grand_total ELSE 0 END) AS rev90,
+		       SUM(CASE WHEN si.posting_date > %(w90)s THEN si.net_total ELSE 0 END) AS rev90,
 		       SUM(CASE WHEN si.posting_date > %(w180)s AND si.posting_date <= %(w90)s
-		                THEN si.grand_total ELSE 0 END) AS prev90
+		                THEN si.net_total ELSE 0 END) AS prev90
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
@@ -157,12 +157,12 @@ def customers_in_groups(groups: list[str]) -> list[dict]:
 
 
 def revenue_by_customer(groups: list[str], start, end) -> dict:
-	"""{customer: doanh số grand_total} trong [start,end] (loại opening)."""
+	"""{customer: doanh số net_total TRƯỚC thuế} trong [start,end] (loại opening)."""
 	if not groups:
 		return {}
 	rows = frappe.db.sql(
 		"""
-		SELECT si.customer AS cust, SUM(si.grand_total) AS amt
+		SELECT si.customer AS cust, SUM(si.net_total) AS amt
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'

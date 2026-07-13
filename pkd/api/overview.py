@@ -30,10 +30,10 @@ from pkd.api.utils import (
 
 # ─── Helper truy vấn ─────────────────────────────────────────────────────────
 def _rev_by_group(start, end) -> dict:
-	"""{customer_group: doanh số grand_total} trong [start,end] (loại opening)."""
+	"""{customer_group: doanh số net_total TRƯỚC thuế} trong [start,end] (loại opening)."""
 	rows = frappe.db.sql(
 		"""
-		SELECT si.customer_group AS grp, SUM(si.grand_total) AS amt
+		SELECT si.customer_group AS grp, SUM(si.net_total) AS amt
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
@@ -101,7 +101,7 @@ def _mix_item_group(start, end, groups: list[str], limit: int = 10) -> list[dict
 		return []
 	rows = frappe.db.sql(
 		"""
-		SELECT sii.item_group AS item_group, SUM(sii.amount) AS amount
+		SELECT sii.item_group AS item_group, SUM(sii.net_amount) AS amount
 		FROM `tabSales Invoice Item` sii
 		JOIN `tabSales Invoice` si ON si.name = sii.parent
 		WHERE si.docstatus = 1
@@ -173,7 +173,7 @@ def _revenue_window(groups: list[str], start, end) -> float:
 		return 0.0
 	row = frappe.db.sql(
 		"""
-		SELECT SUM(si.grand_total) AS amt
+		SELECT SUM(si.net_total) AS amt
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'

@@ -32,7 +32,7 @@ def _season_cumulative(td, n, groups, item_group) -> dict:
 	if item_group:
 		params["ig"] = item_group
 		q = """
-			SELECT DATEDIFF(si.posting_date, %(tet)s) AS off, SUM(sii.amount) AS amt
+			SELECT DATEDIFF(si.posting_date, %(tet)s) AS off, SUM(sii.net_amount) AS amt
 			FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON si.name = sii.parent
 			WHERE si.docstatus = 1 AND IFNULL(si.is_opening, 'No') != 'Yes'
 			  AND si.posting_date BETWEEN %(start)s AND %(tet)s
@@ -41,7 +41,7 @@ def _season_cumulative(td, n, groups, item_group) -> dict:
 		"""
 	else:
 		q = """
-			SELECT DATEDIFF(si.posting_date, %(tet)s) AS off, SUM(si.grand_total) AS amt
+			SELECT DATEDIFF(si.posting_date, %(tet)s) AS off, SUM(si.net_total) AS amt
 			FROM `tabSales Invoice` si
 			WHERE si.docstatus = 1 AND IFNULL(si.is_opening, 'No') != 'Yes'
 			  AND si.posting_date BETWEEN %(start)s AND %(tet)s

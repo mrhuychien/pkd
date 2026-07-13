@@ -3,6 +3,8 @@
 
 Nguyên tắc số liệu (frappe-sales-analytics), in vào code:
 - Doanh số/sản lượng: docstatus=1 + loại is_opening.  Công nợ: GIỮ opening.
+- Doanh số = TRƯỚC THUẾ: si.net_total / sii.net_amount. grand_total (gồm VAT)
+  CHỈ dùng cho công nợ/giá trị hoá đơn phải thanh toán.
 - So kỳ period-aligned (giữ nguyên số ngày đã trôi).
 - CẤM margin/COGS: KHÔNG method nào query giá vốn (blueprint QĐ #3) — loại từ tầng SQL.
 - Attribution doanh số dùng si.customer_group (snapshot trên hoá đơn), KHÔNG join

@@ -83,13 +83,13 @@ def get_governance(channel=None):
 		SELECT si.customer AS cust,
 		       MIN(si.posting_date) AS first_order,
 		       MAX(si.posting_date) AS last_order,
-		       SUM(CASE WHEN si.posting_date > %(w90)s THEN si.grand_total ELSE 0 END) AS cur90,
+		       SUM(CASE WHEN si.posting_date > %(w90)s THEN si.net_total ELSE 0 END) AS cur90,
 		       SUM(CASE WHEN si.posting_date > %(w90)s THEN 1 ELSE 0 END) AS n_cur90,
 		       SUM(CASE WHEN si.posting_date > %(w180)s AND si.posting_date <= %(w90)s
-		                THEN si.grand_total ELSE 0 END) AS prev90,
+		                THEN si.net_total ELSE 0 END) AS prev90,
 		       SUM(CASE WHEN si.posting_date > %(w180)s AND si.posting_date <= %(w90)s
 		                THEN 1 ELSE 0 END) AS n_prev90,
-		       SUM(CASE WHEN si.posting_date >= %(m12)s THEN si.grand_total ELSE 0 END) AS rev12
+		       SUM(CASE WHEN si.posting_date >= %(m12)s THEN si.net_total ELSE 0 END) AS rev12
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
@@ -106,8 +106,8 @@ def get_governance(channel=None):
 		SELECT DATE_FORMAT(si.posting_date, '%%Y-%%m') AS ym,
 		       COUNT(DISTINCT si.customer) AS buyers,
 		       COUNT(*) AS invoices,
-		       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN si.grand_total ELSE 0 END), 0) AS returns,
-		       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN 0 ELSE si.grand_total END), 0) AS gross
+		       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN si.net_total ELSE 0 END), 0) AS returns,
+		       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN 0 ELSE si.net_total END), 0) AS gross
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'

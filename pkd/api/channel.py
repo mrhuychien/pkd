@@ -43,7 +43,7 @@ def _series_12m(groups, today) -> list[dict]:
 	start = get_first_day(add_months(getdate(today), -11))
 	rows = frappe.db.sql(
 		"""
-		SELECT DATE_FORMAT(si.posting_date, '%%Y-%%m') AS ym, SUM(si.grand_total) AS amt
+		SELECT DATE_FORMAT(si.posting_date, '%%Y-%%m') AS ym, SUM(si.net_total) AS amt
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
@@ -285,8 +285,8 @@ def _mt_outlets(mt, chain, today, n, period) -> list[dict]:
 	rows = frappe.db.sql(
 		"""
 		SELECT si.shipping_address_name AS addr,
-		       SUM(CASE WHEN si.posting_date BETWEEN %(ms)s AND %(today)s THEN si.grand_total ELSE 0 END) AS mtd,
-		       SUM(CASE WHEN si.posting_date BETWEEN %(ts)s AND %(today)s THEN si.grand_total ELSE 0 END) AS trailing,
+		       SUM(CASE WHEN si.posting_date BETWEEN %(ms)s AND %(today)s THEN si.net_total ELSE 0 END) AS mtd,
+		       SUM(CASE WHEN si.posting_date BETWEEN %(ts)s AND %(today)s THEN si.net_total ELSE 0 END) AS trailing,
 		       MAX(si.posting_date) AS last_invoice
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
@@ -374,7 +374,7 @@ def _tourism_territory(dl, today):
 		return [], False
 	rows = frappe.db.sql(
 		"""
-		SELECT si.territory AS terr, SUM(si.grand_total) AS amt, COUNT(*) AS cnt
+		SELECT si.territory AS terr, SUM(si.net_total) AS amt, COUNT(*) AS cnt
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'

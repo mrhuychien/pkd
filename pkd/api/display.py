@@ -23,7 +23,7 @@ def _revenue_for_customers(customers, start, end) -> dict:
 		return {}
 	rows = frappe.db.sql(
 		"""
-		SELECT si.customer AS cust, SUM(si.grand_total) AS amt
+		SELECT si.customer AS cust, SUM(si.net_total) AS amt
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'

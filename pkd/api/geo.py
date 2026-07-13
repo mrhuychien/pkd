@@ -128,8 +128,8 @@ def get_province_sales(fiscal_year=None, channel=None):
 		rows = frappe.db.sql(
 			f"""
 			SELECT si.`{col}` AS prov,
-			       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN si.grand_total ELSE 0 END), 0) AS ret,
-			       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN 0 ELSE si.grand_total END), 0) AS gross,
+			       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN si.net_total ELSE 0 END), 0) AS ret,
+			       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN 0 ELSE si.net_total END), 0) AS gross,
 			       COUNT(*) AS invoices,
 			       COUNT(DISTINCT si.customer) AS buyers
 			FROM `tabSales Invoice` si
@@ -147,8 +147,8 @@ def get_province_sales(fiscal_year=None, channel=None):
 		crows = frappe.db.sql(
 			f"""
 			SELECT si.customer AS cust,
-			       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN si.grand_total ELSE 0 END), 0) AS ret,
-			       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN 0 ELSE si.grand_total END), 0) AS gross,
+			       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN si.net_total ELSE 0 END), 0) AS ret,
+			       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN 0 ELSE si.net_total END), 0) AS gross,
 			       COUNT(*) AS invoices
 			FROM `tabSales Invoice` si
 			WHERE si.docstatus = 1

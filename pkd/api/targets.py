@@ -146,7 +146,7 @@ def _actual_by_month_channel(nam, groups, cmap):
 		return out
 	rows = frappe.db.sql(
 		"""
-		SELECT MONTH(si.posting_date) AS m, si.customer_group AS grp, SUM(si.grand_total) AS amt
+		SELECT MONTH(si.posting_date) AS m, si.customer_group AS grp, SUM(si.net_total) AS amt
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
@@ -170,7 +170,7 @@ def _actual_by_item_group(nam, thang, groups):
 		return {}
 	rows = frappe.db.sql(
 		"""
-		SELECT sii.item_group AS ig, SUM(sii.amount) AS amt
+		SELECT sii.item_group AS ig, SUM(sii.net_amount) AS amt
 		FROM `tabSales Invoice Item` sii
 		JOIN `tabSales Invoice` si ON si.name = sii.parent
 		WHERE si.docstatus = 1

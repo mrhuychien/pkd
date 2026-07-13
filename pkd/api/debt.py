@@ -57,7 +57,7 @@ def _rev_12m(groups, today) -> float:
 		return 0.0
 	row = frappe.db.sql(
 		"""
-		SELECT SUM(si.grand_total) AS amt
+		SELECT SUM(si.net_total) AS amt
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'

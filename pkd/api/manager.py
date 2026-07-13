@@ -159,13 +159,13 @@ def overview(channel: str, months: int = 3) -> dict:
 
 	def ch_rev(s, e) -> float:
 		return flt(frappe.db.sql(
-			"""SELECT COALESCE(SUM(grand_total),0) FROM `tabSales Invoice`
+			"""SELECT COALESCE(SUM(net_total),0) FROM `tabSales Invoice`
 			   WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s
 			     AND IFNULL(is_opening,'No')!='Yes'""", (names, s, e))[0][0] or 0)
 
 	# ── Per-customer (kỳ [start, today]) ────────────────────────────────
 	rev_rows = frappe.db.sql(
-		"""SELECT customer AS k, COALESCE(SUM(grand_total),0) AS revenue, COUNT(*) AS orders
+		"""SELECT customer AS k, COALESCE(SUM(net_total),0) AS revenue, COUNT(*) AS orders
 		   FROM `tabSales Invoice`
 		   WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s
 		     AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer""",
@@ -186,12 +186,12 @@ def overview(channel: str, months: int = 3) -> dict:
 	last_map = {r["k"]: r["last"] for r in fl_rows}
 	first_map = {r["k"]: r["first"] for r in fl_rows}
 	rev90 = _sum_by_customer(
-		"""SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice`
+		"""SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice`
 		   WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s
 		     AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer""",
 		(names, add_days(today, -90), today))
 	prev90 = _sum_by_customer(
-		"""SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice`
+		"""SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice`
 		   WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s
 		     AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer""",
 		(names, add_days(today, -180), add_days(today, -90)))
@@ -200,6 +200,8 @@ def overview(channel: str, months: int = 3) -> dict:
 	is_tet = month >= 11 or month <= 2
 	if is_tet:
 		tet_year = today.year if month >= 11 else today.year - 1
+		# tet_map = GIÁ TRỊ HOÁ ĐƠN khách phải trả (grand_total GỒM VAT) — đây là
+		# chính sách THANH TOÁN, không phải doanh số → không đổi sang net_total.
 		tet_map = _sum_by_customer(
 			"""SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice`
 			   WHERE docstatus=1 AND customer IN %s AND posting_date >= %s AND IFNULL(is_opening,'No')!='Yes'
@@ -281,7 +283,7 @@ def overview(channel: str, months: int = 3) -> dict:
 	# Xu hướng 12 tháng + overlay cùng kỳ năm trước
 	m24_start = get_first_day(add_months(today, -23))
 	m_rev = {r["m"]: flt(r["v"]) for r in frappe.db.sql(
-		"""SELECT DATE_FORMAT(posting_date,'%%m/%%Y') AS m, COALESCE(SUM(grand_total),0) AS v
+		"""SELECT DATE_FORMAT(posting_date,'%%m/%%Y') AS m, COALESCE(SUM(net_total),0) AS v
 		   FROM `tabSales Invoice` WHERE docstatus=1 AND customer IN %s AND posting_date >= %s
 		     AND IFNULL(is_opening,'No')!='Yes' GROUP BY m""", (names, m24_start), as_dict=True)}
 	m_qty = {r["m"]: flt(r["v"]) for r in frappe.db.sql(
@@ -300,7 +302,7 @@ def overview(channel: str, months: int = 3) -> dict:
 	by_group = [
 		{"item_group": r["item_group"], "revenue": flt(r["revenue"]), "qty": flt(r["qty"])}
 		for r in frappe.db.sql(
-			"""SELECT i.item_group, COALESCE(SUM(sii.amount),0) AS revenue, COALESCE(SUM(sii.qty),0) AS qty
+			"""SELECT i.item_group, COALESCE(SUM(sii.net_amount),0) AS revenue, COALESCE(SUM(sii.qty),0) AS qty
 			   FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name
 			   JOIN `tabItem` i ON sii.item_code=i.item_code
 			   WHERE si.docstatus=1 AND si.customer IN %s AND si.posting_date BETWEEN %s AND %s
@@ -358,7 +360,7 @@ def products(channel: str, months: int = 3) -> dict:
 
 	cur = frappe.db.sql(
 		"""SELECT sii.item_code, sii.item_name, i.item_group,
-		          COALESCE(SUM(sii.amount),0) AS rev, COALESCE(SUM(sii.qty),0) AS qty
+		          COALESCE(SUM(sii.net_amount),0) AS rev, COALESCE(SUM(sii.qty),0) AS qty
 		   FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name
 		   JOIN `tabItem` i ON sii.item_code=i.item_code
 		   WHERE si.docstatus=1 AND si.customer IN %s AND si.posting_date BETWEEN %s AND %s
@@ -366,7 +368,7 @@ def products(channel: str, months: int = 3) -> dict:
 		   GROUP BY sii.item_code, sii.item_name, i.item_group ORDER BY rev DESC""",
 		(names, start, end, tuple(BOX_UOMS)), as_dict=True)
 	prev_rows = frappe.db.sql(
-		"""SELECT sii.item_code, sii.item_name, COALESCE(SUM(sii.amount),0) AS rev
+		"""SELECT sii.item_code, sii.item_name, COALESCE(SUM(sii.net_amount),0) AS rev
 		   FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name
 		   WHERE si.docstatus=1 AND si.customer IN %s AND si.posting_date BETWEEN %s AND %s
 		     AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s
@@ -404,7 +406,7 @@ def products(channel: str, months: int = 3) -> dict:
 		 "coverage_pct": (int(r["buyers"]) / total_kh * 100) if total_kh else 0}
 		for r in frappe.db.sql(
 			"""SELECT sii.item_code, sii.item_name, COUNT(DISTINCT si.customer) AS buyers,
-			          COALESCE(SUM(sii.amount),0) AS rev
+			          COALESCE(SUM(sii.net_amount),0) AS rev
 			   FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name
 			   WHERE si.docstatus=1 AND si.customer IN %s AND si.posting_date BETWEEN %s AND %s
 			     AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s
@@ -417,7 +419,7 @@ def products(channel: str, months: int = 3) -> dict:
 		 "buyers": int(r["buyers"]), "total_npp": total_kh,
 		 "coverage_pct": (int(r["buyers"]) / total_kh * 100) if total_kh else 0}
 		for r in frappe.db.sql(
-			"""SELECT i.item_group, COALESCE(SUM(sii.amount),0) AS rev, COALESCE(SUM(sii.qty),0) AS qty,
+			"""SELECT i.item_group, COALESCE(SUM(sii.net_amount),0) AS rev, COALESCE(SUM(sii.qty),0) AS qty,
 			          COUNT(DISTINCT si.customer) AS buyers
 			   FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name
 			   JOIN `tabItem` i ON sii.item_code=i.item_code
@@ -447,7 +449,7 @@ def sku_white_space(channel: str, item_code: str, months: int = 3) -> list[dict]
 		     AND sii.item_code=%s AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s""",
 		(names, start, end, item_code, tuple(BOX_UOMS)))}
 	rev_rows = frappe.db.sql(
-		"""SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice`
+		"""SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice`
 		   WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s
 		     AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer""", (names, start, end), as_dict=True)
 	info = {c["name"]: c for c in frappe.get_all(
@@ -477,7 +479,7 @@ def white_space(channel: str, item_group: str, months: int = 3) -> list[dict]:
 		     AND i.item_group=%s AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s""",
 		(names, start, end, item_group, tuple(BOX_UOMS)))}
 	rev_rows = frappe.db.sql(
-		"""SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice`
+		"""SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice`
 		   WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s
 		     AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer""", (names, start, end), as_dict=True)
 	info = {c["name"]: c for c in frappe.get_all(
@@ -511,12 +513,12 @@ def targets(channel: str, months: int = 1) -> dict:
 		return {"meta": _meta(channel), "available": True, "months": months, "rows": [], "totals": {}, "expected_pace_pct": 0}
 	names = tuple(c["name"] for c in customers)
 	rev_map = _sum_by_customer(
-		"""SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice`
+		"""SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice`
 		   WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s
 		     AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer""", (names, start, end))
 	# Gợi ý target: TB doanh số 3 tháng gần nhất × 1.1
 	sug_map = _sum_by_customer(
-		"""SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice`
+		"""SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice`
 		   WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s
 		     AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer""",
 		(names, get_first_day(add_months(today, -2)), today))
@@ -651,11 +653,11 @@ def insights(channel: str) -> dict:
 	prev_first = get_first_day(add_months(today, -1))
 	prev_end = add_days(prev_first, elapsed - 1)
 	this_mtd = _sum_by_customer(
-		"SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice` "
+		"SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice` "
 		"WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer",
 		(names, this_start, today))
 	prev_mtd = _sum_by_customer(
-		"SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice` "
+		"SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice` "
 		"WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer",
 		(names, prev_first, prev_end))
 
@@ -706,11 +708,11 @@ def action_center(channel: str) -> dict:
 		"FROM `tabSales Invoice` WHERE docstatus=1 AND customer IN %s GROUP BY customer", (names,), as_dict=True)}
 	cd = channel_debt(names, today)
 	rev90 = _sum_by_customer(
-		"SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice` "
+		"SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice` "
 		"WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer",
 		(names, add_days(today, -90), today))
 	prev90 = _sum_by_customer(
-		"SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice` "
+		"SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice` "
 		"WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer",
 		(names, add_days(today, -180), add_days(today, -90)))
 
@@ -824,7 +826,7 @@ def catalog_depth(channel: str, months: int = 3, thin: int = 5) -> dict:
 		     AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s GROUP BY si.customer""",
 		(names, start, today, tuple(BOX_UOMS)), as_dict=True)}
 	rev_map = _sum_by_customer(
-		"""SELECT customer AS k, COALESCE(SUM(grand_total),0) AS v FROM `tabSales Invoice`
+		"""SELECT customer AS k, COALESCE(SUM(net_total),0) AS v FROM `tabSales Invoice`
 		   WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s
 		     AND IFNULL(is_opening,'No')!='Yes' GROUP BY customer""", (names, start, today))
 	rows = []
@@ -882,7 +884,7 @@ def customer_detail(channel: str, customer: str, months: int = 12) -> dict:
 
 	def rev_between(s, e) -> float:
 		return flt(frappe.db.sql(
-			"SELECT COALESCE(SUM(grand_total),0) FROM `tabSales Invoice` "
+			"SELECT COALESCE(SUM(net_total),0) FROM `tabSales Invoice` "
 			"WHERE docstatus=1 AND customer=%s AND posting_date BETWEEN %s AND %s "
 			"AND IFNULL(is_opening,'No')!='Yes'", (customer, s, e))[0][0] or 0)
 
@@ -928,7 +930,7 @@ def customer_detail(channel: str, customer: str, months: int = 12) -> dict:
 	# ── Xu hướng 12 tháng + overlay năm trước ───────────────────────────
 	trend_start = get_first_day(add_months(today, -11))
 	rev_by_m = {r["m"]: flt(r["v"]) for r in frappe.db.sql(
-		"SELECT DATE_FORMAT(posting_date,'%%Y-%%m') AS m, COALESCE(SUM(grand_total),0) AS v "
+		"SELECT DATE_FORMAT(posting_date,'%%Y-%%m') AS m, COALESCE(SUM(net_total),0) AS v "
 		"FROM `tabSales Invoice` WHERE docstatus=1 AND customer=%s AND posting_date>=%s "
 		"AND IFNULL(is_opening,'No')!='Yes' GROUP BY m", (customer, trend_start), as_dict=True)}
 	qty_by_m = {r["m"]: flt(r["v"]) for r in frappe.db.sql(
@@ -938,7 +940,7 @@ def customer_detail(channel: str, customer: str, months: int = 12) -> dict:
 		"AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s GROUP BY m",
 		(customer, trend_start, tuple(BOX_UOMS)), as_dict=True)}
 	ly_by_m = {r["m"]: flt(r["v"]) for r in frappe.db.sql(
-		"SELECT DATE_FORMAT(posting_date,'%%Y-%%m') AS m, COALESCE(SUM(grand_total),0) AS v "
+		"SELECT DATE_FORMAT(posting_date,'%%Y-%%m') AS m, COALESCE(SUM(net_total),0) AS v "
 		"FROM `tabSales Invoice` WHERE docstatus=1 AND customer=%s AND posting_date>=%s AND posting_date<%s "
 		"AND IFNULL(is_opening,'No')!='Yes' GROUP BY m",
 		(customer, add_months(trend_start, -12), trend_start), as_dict=True)}
@@ -980,7 +982,7 @@ def customer_detail(channel: str, customer: str, months: int = 12) -> dict:
 
 	# ── Sản phẩm (không margin) ─────────────────────────────────────────
 	cur_sku = frappe.db.sql(
-		"SELECT sii.item_code, sii.item_name, i.item_group, COALESCE(SUM(sii.amount),0) AS rev, "
+		"SELECT sii.item_code, sii.item_name, i.item_group, COALESCE(SUM(sii.net_amount),0) AS rev, "
 		"COALESCE(SUM(sii.qty),0) AS qty "
 		"FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name "
 		"JOIN `tabItem` i ON sii.item_code=i.item_code "
@@ -989,7 +991,7 @@ def customer_detail(channel: str, customer: str, months: int = 12) -> dict:
 		"GROUP BY sii.item_code, sii.item_name, i.item_group ORDER BY rev DESC",
 		(customer, start, end, tuple(BOX_UOMS)), as_dict=True)
 	prev_sku = {r["item_code"]: flt(r["rev"]) for r in frappe.db.sql(
-		"SELECT sii.item_code, COALESCE(SUM(sii.amount),0) AS rev "
+		"SELECT sii.item_code, COALESCE(SUM(sii.net_amount),0) AS rev "
 		"FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name "
 		"WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s "
 		"AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s GROUP BY sii.item_code",
@@ -1008,7 +1010,7 @@ def customer_detail(channel: str, customer: str, months: int = 12) -> dict:
 
 	# ── Nhóm hàng ───────────────────────────────────────────────────────
 	cur_grp = frappe.db.sql(
-		"SELECT i.item_group, COALESCE(SUM(sii.amount),0) AS rev, COALESCE(SUM(sii.qty),0) AS qty "
+		"SELECT i.item_group, COALESCE(SUM(sii.net_amount),0) AS rev, COALESCE(SUM(sii.qty),0) AS qty "
 		"FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name "
 		"JOIN `tabItem` i ON sii.item_code=i.item_code "
 		"WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s "
@@ -1024,7 +1026,7 @@ def customer_detail(channel: str, customer: str, months: int = 12) -> dict:
 		"JOIN `tabSales Invoice` si ON sii.parent=si.name JOIN `tabItem` i ON sii.item_code=i.item_code "
 		"WHERE si.docstatus=1 AND si.customer IN %s AND si.posting_date>=%s "
 		"AND IFNULL(si.is_opening,'No')!='Yes' AND sii.uom IN %s "
-		"GROUP BY i.item_group ORDER BY COALESCE(SUM(sii.amount),0) DESC",
+		"GROUP BY i.item_group ORDER BY COALESCE(SUM(sii.net_amount),0) DESC",
 		(names, add_days(today, -365), tuple(BOX_UOMS)))]
 	total_groups = len(chan_groups)
 	coverage_pct = (len(bought_groups) / total_groups * 100) if total_groups else 0
@@ -1036,7 +1038,7 @@ def customer_detail(channel: str, customer: str, months: int = 12) -> dict:
 		{"item_code": r["item_code"], "item_name": r["item_name"], "channel_revenue": flt(r["rev"]),
 		 "buyers": int(r["buyers"]), "total_npp": total_kh}
 		for r in frappe.db.sql(
-			"SELECT sii.item_code, sii.item_name, COALESCE(SUM(sii.amount),0) AS rev, "
+			"SELECT sii.item_code, sii.item_name, COALESCE(SUM(sii.net_amount),0) AS rev, "
 			"COUNT(DISTINCT si.customer) AS buyers "
 			"FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name "
 			"WHERE si.docstatus=1 AND si.customer IN %s AND si.posting_date>=%s "
@@ -1165,7 +1167,7 @@ def sales_matrix(channel: str) -> dict:
 
 	by: dict = {}
 	for r in frappe.db.sql(
-		"""SELECT customer AS c, DATE_FORMAT(posting_date,'%%Y-%%m') AS m, COALESCE(SUM(grand_total),0) AS v
+		"""SELECT customer AS c, DATE_FORMAT(posting_date,'%%Y-%%m') AS m, COALESCE(SUM(net_total),0) AS v
 		   FROM `tabSales Invoice`
 		   WHERE docstatus=1 AND customer IN %s AND posting_date BETWEEN %s AND %s
 		     AND IFNULL(is_opening,'No')!='Yes'
@@ -1238,7 +1240,7 @@ def mt_chain_outlets(customer: str, months: int = 12) -> dict:
 	# Kỳ hiện tại — invoice level per outlet ('' = thiếu địa chỉ).
 	cur = frappe.db.sql(
 		"""SELECT IFNULL(si.shipping_address_name,'') AS outlet,
-		          COALESCE(SUM(si.grand_total),0) AS revenue, COUNT(*) AS orders,
+		          COALESCE(SUM(si.net_total),0) AS revenue, COUNT(*) AS orders,
 		          MAX(si.posting_date) AS last_inv, MIN(si.posting_date) AS first_inv
 		   FROM `tabSales Invoice` si
 		   WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s
@@ -1248,7 +1250,7 @@ def mt_chain_outlets(customer: str, months: int = 12) -> dict:
 
 	def _rev_by_outlet(s, e) -> dict:
 		return {r["k"]: flt(r["v"]) for r in frappe.db.sql(
-			"""SELECT IFNULL(si.shipping_address_name,'') AS k, COALESCE(SUM(si.grand_total),0) AS v
+			"""SELECT IFNULL(si.shipping_address_name,'') AS k, COALESCE(SUM(si.net_total),0) AS v
 			   FROM `tabSales Invoice` si
 			   WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s
 			     AND IFNULL(si.is_opening,'No')!='Yes'
@@ -1275,7 +1277,7 @@ def mt_chain_outlets(customer: str, months: int = 12) -> dict:
 	monthly_by: dict = {}
 	for r in frappe.db.sql(
 		"""SELECT IFNULL(si.shipping_address_name,'') AS o, DATE_FORMAT(si.posting_date,'%%Y-%%m') AS m,
-		          COALESCE(SUM(si.grand_total),0) AS v
+		          COALESCE(SUM(si.net_total),0) AS v
 		   FROM `tabSales Invoice` si
 		   WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s
 		     AND IFNULL(si.is_opening,'No')!='Yes'
@@ -1386,7 +1388,7 @@ def mt_outlet_detail(customer: str, outlet: str, months: int = 12) -> dict:
 
 	# Cơ cấu nhóm hàng trong kỳ (không margin).
 	by_group = frappe.db.sql(
-		f"""SELECT i.item_group, COALESCE(SUM(sii.amount),0) AS revenue, COALESCE(SUM(sii.qty),0) AS qty
+		f"""SELECT i.item_group, COALESCE(SUM(sii.net_amount),0) AS revenue, COALESCE(SUM(sii.qty),0) AS qty
 		    FROM `tabSales Invoice Item` sii JOIN `tabSales Invoice` si ON sii.parent=si.name
 		    JOIN `tabItem` i ON sii.item_code=i.item_code
 		    WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date BETWEEN %s AND %s
@@ -1402,7 +1404,7 @@ def mt_outlet_detail(customer: str, outlet: str, months: int = 12) -> dict:
 	# Xu hướng 12 tháng gần nhất (độc lập kỳ chọn) — doanh số + thùng.
 	trend_start = get_first_day(add_months(today, -11))
 	rev_m = {r["m"]: flt(r["v"]) for r in frappe.db.sql(
-		f"""SELECT DATE_FORMAT(si.posting_date,'%%Y-%%m') AS m, COALESCE(SUM(si.grand_total),0) AS v
+		f"""SELECT DATE_FORMAT(si.posting_date,'%%Y-%%m') AS m, COALESCE(SUM(si.net_total),0) AS v
 		    FROM `tabSales Invoice` si
 		    WHERE si.docstatus=1 AND si.customer=%s AND si.posting_date>=%s
 		      AND IFNULL(si.is_opening,'No')!='Yes' AND {addr_cond} GROUP BY m""",

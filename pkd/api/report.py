@@ -2,7 +2,7 @@
 """report.get_business_report — "Kinh doanh chung" theo NĂM TÀI CHÍNH (Grafana port).
 
 Điểm mới so với phần còn lại của app: TÁCH hoá đơn trả về (si.is_return=1,
-grand_total ÂM) khỏi bán ra → bán ra / trả về / thực bán / tỷ lệ trả.
+net_total ÂM) khỏi bán ra → bán ra / trả về / thực bán / tỷ lệ trả. Doanh số TRƯỚC thuế.
 Doanh số loại opening như thường; so sánh trong 1 cửa sổ năm tài chính (không
 so kỳ nên không cần align). Kênh = 3 kênh cấu hình + bucket "Khác" (mọi
 Customer Group ngoài 3 cây). Không margin/COGS (QĐ #3).
@@ -82,7 +82,7 @@ def _window_agg(start, end, cmap: dict, channel: str | None, month_keys: list[st
 		SELECT DATE_FORMAT(si.posting_date, '%%Y-%%m') AS ym,
 		       si.customer_group AS grp,
 		       IF(si.is_return = 1, 1, 0) AS ret,
-		       COALESCE(SUM(si.grand_total), 0) AS amt
+		       COALESCE(SUM(si.net_total), 0) AS amt
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
@@ -201,7 +201,7 @@ def get_business_report(fiscal_year=None, channel=None):
 	chf = _group_filter_sql(channel, cmap, params)
 	ig_rows = frappe.db.sql(
 		f"""
-		SELECT sii.item_group AS ig, COALESCE(SUM(sii.amount), 0) AS amt
+		SELECT sii.item_group AS ig, COALESCE(SUM(sii.net_amount), 0) AS amt
 		FROM `tabSales Invoice Item` sii
 		JOIN `tabSales Invoice` si ON si.name = sii.parent
 		WHERE si.docstatus = 1
@@ -225,7 +225,7 @@ def get_business_report(fiscal_year=None, channel=None):
 	chf2 = _group_filter_sql(channel, cmap, params2)
 	cust_rows = frappe.db.sql(
 		f"""
-		SELECT si.customer AS cust, COALESCE(SUM(si.grand_total), 0) AS net
+		SELECT si.customer AS cust, COALESCE(SUM(si.net_total), 0) AS net
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
@@ -258,7 +258,7 @@ def get_business_report(fiscal_year=None, channel=None):
 		return frappe.db.sql(
 			f"""
 			SELECT sii.item_code, sii.item_name,
-			       COALESCE(SUM(sii.amount), 0) AS net,
+			       COALESCE(SUM(sii.net_amount), 0) AS net,
 			       COALESCE(SUM(sii.qty), 0) AS qty
 			FROM `tabSales Invoice Item` sii
 			JOIN `tabSales Invoice` si ON si.name = sii.parent
