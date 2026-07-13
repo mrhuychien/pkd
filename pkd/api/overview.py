@@ -30,11 +30,14 @@ from pkd.api.utils import (
 
 
 # ─── Helper truy vấn ─────────────────────────────────────────────────────────
-def _rev_by_group(start, end) -> dict:
-	"""{customer_group: doanh số net_total TRƯỚC thuế} trong [start,end] (loại opening)."""
+def _rev_split_by_group(start, end) -> tuple[dict, dict]:
+	"""({group: BÁN RA}, {group: TRẢ VỀ âm}) — net_total TRƯỚC thuế, tách is_return,
+	quét TOÀN BỘ Sales Invoice (loại opening). Cùng gốc số với ô tháng Kinh doanh chung."""
 	rows = frappe.db.sql(
 		"""
-		SELECT si.customer_group AS grp, SUM(si.net_total) AS amt
+		SELECT si.customer_group AS grp,
+		       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN 0 ELSE si.net_total END), 0) AS gross,
+		       COALESCE(SUM(CASE WHEN si.is_return = 1 THEN si.net_total ELSE 0 END), 0) AS ret
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
@@ -44,7 +47,13 @@ def _rev_by_group(start, end) -> dict:
 		{"start": start, "end": end},
 		as_dict=True,
 	)
-	return {r.grp: flt(r.amt) for r in rows}
+	return {r.grp: flt(r.gross) for r in rows}, {r.grp: flt(r.ret) for r in rows}
+
+
+def _rev_by_group(start, end) -> dict:
+	"""{customer_group: THỰC BÁN net (bán ra + trả về)} — giữ cho code dùng net."""
+	gross, ret = _rev_split_by_group(start, end)
+	return {k: gross.get(k, 0.0) + ret.get(k, 0.0) for k in set(gross) | set(ret)}
 
 
 def _boxes_by_group(start, end) -> dict:
@@ -209,11 +218,15 @@ def get_overview():
 	yoy = shift_period(period, 12)
 	cmap = channel_map()
 
-	# Doanh số theo group cho 4 mốc + thùng.
-	ch_mtd = _to_channels(_rev_by_group(period["start"], period["end"]), cmap)
-	ch_prev = _to_channels(_rev_by_group(prev["start"], prev["end"]), cmap)
-	ch_yoy = _to_channels(_rev_by_group(yoy["start"], yoy["end"]), cmap)
-	ch_today = _to_channels(_rev_by_group(period["end"], period["end"]), cmap)
+	# Doanh số theo group cho 4 mốc + thùng. Headline = BÁN RA (gross, chưa trừ
+	# trả về) — CÙNG GỐC với ô "bán ra theo tháng" của Kinh doanh chung để 2 số
+	# khớp nhau; trả về/thực bán trả kèm để hiển thị phụ.
+	g_mtd, r_mtd = _rev_split_by_group(period["start"], period["end"])
+	ch_mtd = _to_channels(g_mtd, cmap)
+	ch_ret = _to_channels(r_mtd, cmap)
+	ch_prev = _to_channels(_rev_split_by_group(prev["start"], prev["end"])[0], cmap)
+	ch_yoy = _to_channels(_rev_split_by_group(yoy["start"], yoy["end"])[0], cmap)
+	ch_today = _to_channels(_rev_split_by_group(period["end"], period["end"])[0], cmap)
 	ch_boxes = _to_channels(_boxes_by_group(period["start"], period["end"]), cmap)
 
 	targets = _targets_by_channel(period["end"].year, period["end"].month)
@@ -226,7 +239,9 @@ def get_overview():
 			{
 				"key": k,
 				"label": CHANNEL_LABELS[k],
-				"mtd": ch_mtd[k],
+				"mtd": ch_mtd[k],                          # bán ra (cùng gốc toàn phòng)
+				"returns_mtd": ch_ret[k],
+				"net_mtd": ch_mtd[k] + ch_ret[k],
 				"growth_pct": growth_pct(ch_mtd[k], ch_prev[k]),
 				"yoy_pct": growth_pct(ch_mtd[k], ch_yoy[k]),
 				"run_rate": run_rate(ch_mtd[k], period),
@@ -243,9 +258,12 @@ def get_overview():
 	total_target = sum(v for v in targets.values() if v)
 	ib = _invoices_buyers(period["start"], period["end"])
 
+	total_returns = sum(ch_ret.values())
 	total = {
 		"today": total_today,
-		"mtd": total_mtd,
+		"mtd": total_mtd,                       # BÁN RA — khớp ô tháng Kinh doanh chung
+		"returns_mtd": total_returns,           # trả về (âm)
+		"net_mtd": total_mtd + total_returns,   # thực bán
 		"prev_mtd": total_prev,
 		"growth_pct": growth_pct(total_mtd, total_prev),
 		"yoy_pct": growth_pct(total_mtd, total_yoy),

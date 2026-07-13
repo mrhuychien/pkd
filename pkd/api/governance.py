@@ -239,13 +239,14 @@ def get_governance(channel=None):
 		"no_buy_amount": sum(a for _, a in no_buy),
 	}
 
-	# ── Nhịp đạt mục tiêu MTD theo kênh (dưới nhịp = cảnh báo sớm) ──────────
-	from pkd.api.overview import _rev_by_group, _targets_by_channel, _to_channels
+	# ── Nhịp đạt mục tiêu MTD theo kênh (dưới nhịp = cảnh báo sớm).
+	# Dùng BÁN RA (gross) — cùng gốc với KPI toàn phòng/ô tháng Kinh doanh chung.
+	from pkd.api.overview import _rev_split_by_group, _targets_by_channel, _to_channels
 
 	period = period_mtd(today)
 	pace = pace_pct(period)
 	cmap = channel_map()
-	ch_mtd = _to_channels(_rev_by_group(period["start"], period["end"]), cmap)
+	ch_mtd = _to_channels(_rev_split_by_group(period["start"], period["end"])[0], cmap)
 	targets = _targets_by_channel(period["end"].year, period["end"].month)
 	keys = [channel] if channel else list(CHANNEL_KEYS)
 	pace_channels = []

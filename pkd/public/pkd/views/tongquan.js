@@ -130,9 +130,10 @@ function renderKpis(ov) {
     const attain = t.attainment_pct, pace = p.pace_pct;
     document.getElementById('kd-ov-kpis').innerHTML = html`
         <div class="kd-kpi-card">
-            <div class="kd-kpi-label">Doanh số MTD (toàn phòng)</div>
+            <div class="kd-kpi-label">DS bán ra MTD (toàn phòng)</div>
             <div class="kd-kpi-value">${formatVNDShort(t.mtd || 0)}</div>
             <div class="kd-kpi-sub">${pctBadge(t.growth_pct)} vs kỳ trước · ${pctBadge(t.yoy_pct)} YoY <span class="kd-text-muted">(cùng số ngày)</span></div>
+            <div class="kd-kpi-sub">Trả về ${formatVNDShort(t.returns_mtd || 0)} · Thực bán <b>${formatVNDShort(t.net_mtd != null ? t.net_mtd : (t.mtd || 0))}</b></div>
         </div>
         <div class="kd-kpi-card">
             <div class="kd-kpi-label">Run-rate (ước cả tháng)</div>
