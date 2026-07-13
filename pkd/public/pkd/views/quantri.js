@@ -28,17 +28,19 @@ export async function render({ container }) {
         <div class="kd-card">
             <h3 class="kd-font-bold kd-mb-2">➕ Tạo user portal mới</h3>
             <div class="kd-adm-form">
-                <label>Họ tên <input id="kd-adm-name" type="text" placeholder="Nguyễn Văn A" autocomplete="off"></label>
-                <label>Email đăng nhập <input id="kd-adm-email" type="email" placeholder="a@congty.vn" autocomplete="off"></label>
-                <label>Điện thoại (tuỳ chọn) <input id="kd-adm-mobile" type="tel" placeholder="09xx..." autocomplete="off"></label>
+                <label>Họ tên * <input id="kd-adm-name" type="text" placeholder="Nguyễn Văn A" autocomplete="off"></label>
+                <label>Số điện thoại * (dùng để đăng nhập) <input id="kd-adm-mobile" type="tel" placeholder="09xxxxxxxx" autocomplete="off"></label>
                 <label>Cấp quyền <select id="kd-adm-level">
                     ${_levels.map((l) => `<option value="${l.key}">${escapeHtml(l.label)}</option>`).join('')}
                 </select></label>
+                <label>Mật khẩu (bỏ trống = tự sinh) <input id="kd-adm-pass" type="text" placeholder="tự sinh 10 ký tự" autocomplete="off"></label>
+                <label>Email (tuỳ chọn) <input id="kd-adm-email" type="email" placeholder="không bắt buộc" autocomplete="off"></label>
             </div>
             <div class="kd-text-sm kd-text-muted kd-mt-2">
+                • Người dùng đăng nhập bằng <b>SỐ ĐIỆN THOẠI + mật khẩu</b> tại trang /login (email không cần).<br>
                 • User chỉ vào được <b>portal /kd</b> — Desk/ERPNext bị chặn hẳn (Website User).<br>
                 • <b>Trưởng phòng</b>: toàn quyền portal, kể cả sửa chỉ tiêu. <b>Quản lý kênh</b>: xem toàn bộ, <u>không sửa chỉ tiêu</u>.<br>
-                • Sau khi tạo sẽ hiện <b>mã QR đăng nhập 1 lần</b> (hạn 7 ngày) — đưa người dùng quét là vào ngay.
+                • Sau khi tạo sẽ hiện <b>mật khẩu (1 lần)</b> + <b>mã QR vào ngay</b> (1 lần, hạn 7 ngày).
             </div>
             <button class="kd-btn kd-btn-primary kd-mt-3" id="kd-adm-create">Tạo user + QR</button>
         </div>
@@ -68,7 +70,7 @@ async function loadList() {
         root.innerHTML = pagedTable({
             columns: [
                 { key: 'full_name', label: 'Họ tên', render: (r) =>
-                    `<b>${escapeHtml(r.full_name || r.user)}</b><br><span class="kd-text-sm kd-text-muted">${escapeHtml(r.user)}</span>` },
+                    `<b>${escapeHtml(r.full_name || r.user)}</b><br><span class="kd-text-sm kd-text-muted">${r.mobile_no ? `📱 ${escapeHtml(r.mobile_no)} · ` : ''}${escapeHtml(r.user)}</span>` },
                 { key: 'level_label', label: 'Cấp quyền', render: (r) =>
                     `<span class="kd-badge ${r.level === 'truong_phong' ? 'kd-badge-success' : 'kd-badge-warning'}">${escapeHtml(r.level_label)}</span>` },
                 { key: 'enabled', label: 'Trạng thái', render: (r) =>
@@ -88,16 +90,17 @@ async function loadList() {
 
 async function onCreate() {
     const btn = document.getElementById('kd-adm-create');
-    const email = document.getElementById('kd-adm-email').value.trim();
     const name = document.getElementById('kd-adm-name').value.trim();
     const mobile = document.getElementById('kd-adm-mobile').value.trim();
+    const email = document.getElementById('kd-adm-email').value.trim();
+    const pass = document.getElementById('kd-adm-pass').value.trim();
     const level = document.getElementById('kd-adm-level').value;
-    if (!email || !name) { showToast('Nhập họ tên + email trước đã', 'error'); return; }
+    if (!name || !mobile) { showToast('Bắt buộc nhập Họ tên + Số điện thoại', 'error'); return; }
     btn.disabled = true; btn.textContent = 'Đang tạo...';
     try {
-        const r = await api.admin.createUser(email, name, level, mobile || null);
-        showToast(`Đã tạo ${r.user}`, 'success');
-        ['kd-adm-email', 'kd-adm-name', 'kd-adm-mobile'].forEach((id) => { document.getElementById(id).value = ''; });
+        const r = await api.admin.createUser(name, mobile, level, email || null, pass || null);
+        showToast(`Đã tạo tài khoản cho ${r.mobile}`, 'success');
+        ['kd-adm-email', 'kd-adm-name', 'kd-adm-mobile', 'kd-adm-pass'].forEach((id) => { document.getElementById(id).value = ''; });
         await showQrPanel(r, 'Tạo user thành công');
         await loadList();
     } catch (err) {
@@ -132,10 +135,19 @@ async function onListAction(e) {
 async function showQrPanel(r, title) {
     const root = document.getElementById('kd-adm-result');
     if (!root) return;
+    const creds = r.password ? `
+        <div class="kd-mt-2" style="background:var(--kd-bg);border:1px dashed var(--kd-border);border-radius:10px;padding:10px 12px;">
+            <div class="kd-font-bold kd-text-sm">🔑 Đăng nhập thủ công (trang /login):</div>
+            <div class="kd-text-sm kd-mt-2">Số điện thoại: <b>${escapeHtml(r.mobile || '')}</b> · Mật khẩu:
+                <code id="kd-adm-pw" style="font-weight:800;">${escapeHtml(r.password)}</code>
+                <button class="kd-btn-sm" id="kd-adm-copy-pw" style="margin-left:6px;">📋 Copy</button></div>
+            <div class="kd-text-sm kd-text-muted kd-mt-2">Mật khẩu chỉ hiện <b>1 lần này</b> — lưu lại trước khi rời trang. Người dùng có thể đổi qua "Quên mật khẩu".</div>
+        </div>` : '';
     root.innerHTML = html`
         <div class="kd-card kd-mt-3" style="border-left:4px solid var(--kd-success);">
             <h3 class="kd-font-bold">✅ ${escapeHtml(title)}: ${escapeHtml(r.full_name || r.user)}</h3>
-            <div class="kd-text-sm kd-text-muted">${escapeHtml(r.user)}${r.level_label ? ` · ${escapeHtml(r.level_label)}` : ''}</div>
+            <div class="kd-text-sm kd-text-muted">${r.mobile ? `📱 ${escapeHtml(r.mobile)} · ` : ''}${escapeHtml(r.user)}${r.level_label ? ` · ${escapeHtml(r.level_label)}` : ''}</div>
+            ${creds}
             <div class="kd-adm-qrwrap kd-mt-3">
                 <div id="kd-adm-qr" class="kd-adm-qr"></div>
                 <div>
@@ -152,6 +164,12 @@ async function showQrPanel(r, title) {
     document.getElementById('kd-adm-copy').addEventListener('click', async () => {
         try { await navigator.clipboard.writeText(r.quick_url); showToast('Đã copy link đăng nhập', 'success'); }
         catch { showToast('Không copy được — chọn tay đoạn link bên dưới', 'error'); }
+    });
+    document.getElementById('kd-adm-copy-pw')?.addEventListener('click', async () => {
+        try {
+            await navigator.clipboard.writeText(`SĐT: ${r.mobile} · Mật khẩu: ${r.password}`);
+            showToast('Đã copy SĐT + mật khẩu', 'success');
+        } catch { showToast('Không copy được — ghi tay lại', 'error'); }
     });
     root.scrollIntoView({ behavior: 'smooth', block: 'start' });
     await drawQr(document.getElementById('kd-adm-qr'), r.quick_url);

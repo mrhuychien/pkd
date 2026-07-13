@@ -77,7 +77,7 @@ export const getProvinceSales    = (fiscal_year, channel) => call('pkd.api.geo.g
 // Quản trị người dùng portal (chỉ System Manager — guard ở server)
 export const admin = {
     listUsers:  ()                              => call('pkd.api.admin.list_portal_users'),
-    createUser: (email, full_name, level, mobile) => call('pkd.api.admin.create_portal_user', { email, full_name, level, mobile }),
+    createUser: (full_name, mobile, level, email, password) => call('pkd.api.admin.create_portal_user', { full_name, mobile, level, email, password }),
     renewQr:    (user)                          => call('pkd.api.admin.renew_qr', { user }),
     setEnabled: (user, enabled)                 => call('pkd.api.admin.set_enabled', { user, enabled }),
 };

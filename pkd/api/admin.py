@@ -18,10 +18,16 @@ và chỉ System Manager tạo được token.
 from __future__ import annotations
 
 import re
+import secrets
 
 import frappe
 from frappe import _
 from frappe.utils import get_url
+
+# Mật khẩu tự sinh: 10 ký tự, bỏ ký tự dễ nhầm (0/O, 1/l/I) — đọc được qua điện thoại.
+_PW_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789"
+# Email nội bộ cho user chỉ có SĐT (User của Frappe bắt buộc keyed theo email).
+_SYNTH_DOMAIN = "pkd.local"
 
 QR_TTL_DAYS = 7
 _QLOGIN_KEY = "pkd:qlogin:{token}"
@@ -102,38 +108,71 @@ def list_portal_users():
 	return {"users": out, "levels": [{"key": k, "label": LEVEL_LABELS[k]} for k in LEVELS]}
 
 
+def _norm_mobile(mobile: str) -> str:
+	"""Chuẩn hoá SĐT: bỏ khoảng trắng/chấm/gạch; +84xxx → 0xxx; validate 10-11 số."""
+	m = re.sub(r"[\s.\-()]+", "", mobile or "")
+	if m.startswith("+84"):
+		m = "0" + m[3:]
+	elif m.startswith("84") and len(m) >= 10:
+		m = "0" + m[2:]
+	if not re.match(r"^0\d{9,10}$", m):
+		frappe.throw(_("Số điện thoại không hợp lệ: {0}").format(mobile))
+	return m
+
+
+def _ensure_mobile_login_enabled():
+	"""Đăng nhập bằng SĐT cần System Settings bật cờ — bật 1 lần khi tạo user."""
+	if not frappe.db.get_single_value("System Settings", "allow_login_using_mobile_number"):
+		frappe.db.set_single_value("System Settings", "allow_login_using_mobile_number", 1)
+		frappe.clear_cache()
+
+
 @frappe.whitelist()
-def create_portal_user(email, full_name, level, mobile=None):
-	"""Tạo user portal-only + cấp quyền + phát hành QR đăng nhập ngay."""
+def create_portal_user(full_name, mobile, level, email=None, password=None):
+	"""Tạo user portal-only: BẮT BUỘC họ tên + SĐT. Đăng nhập = SĐT + mật khẩu
+	(tự sinh nếu bỏ trống — trả về 1 LẦN); email tuỳ chọn (không có → email nội
+	bộ <SĐT>@pkd.local vì Frappe khoá User theo email). Kèm QR vào ngay."""
 	_admin_guard()
-	email = (email or "").strip().lower()
 	full_name = (full_name or "").strip()
-	if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
-		frappe.throw(_("Email không hợp lệ: {0}").format(email))
 	if not full_name:
 		frappe.throw(_("Thiếu họ tên"))
 	if level not in LEVELS:
 		frappe.throw(_("Cấp quyền không hợp lệ: {0}").format(level))
+	mobile = _norm_mobile(mobile)
+	if frappe.db.exists("User", {"mobile_no": mobile}):
+		frappe.throw(_("Số điện thoại đã có tài khoản: {0}").format(mobile))
+
+	email = (email or "").strip().lower()
+	if email:
+		if not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+			frappe.throw(_("Email không hợp lệ: {0}").format(email))
+	else:
+		email = f"{mobile}@{_SYNTH_DOMAIN}"
 	if frappe.db.exists("User", email):
 		frappe.throw(_("User đã tồn tại: {0}").format(email))
+
+	password = (password or "").strip() or "".join(secrets.choice(_PW_ALPHABET) for _ in range(10))
 
 	doc = frappe.get_doc({
 		"doctype": "User",
 		"email": email,
 		"first_name": full_name,
-		"mobile_no": (mobile or "").strip() or None,
+		"mobile_no": mobile,
 		# Website User = KHÔNG có Desk (chặn từ tầng auth, không phải ẩn UI).
 		"user_type": "Website User",
 		"enabled": 1,
 		"send_welcome_email": 0,
+		"new_password": password,
 		"roles": [{"role": BASE_ROLE}, {"role": LEVELS[level]}],
 	})
 	doc.flags.no_welcome_mail = True
 	doc.insert(ignore_permissions=True)
+	_ensure_mobile_login_enabled()
 
 	tk = _issue_token(email)
 	return {
-		"user": email, "full_name": doc.full_name,
+		"user": email, "full_name": doc.full_name, "mobile": mobile,
+		"password": password,   # hiện đúng 1 lần cho admin đưa người dùng
 		"level": level, "level_label": LEVEL_LABELS[level],
 		**tk,
 	}
