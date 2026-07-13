@@ -4,8 +4,7 @@
 Điểm mới so với phần còn lại của app: TÁCH hoá đơn trả về (si.is_return=1,
 net_total ÂM) khỏi bán ra → bán ra / trả về / thực bán / tỷ lệ trả. Doanh số TRƯỚC thuế.
 Doanh số loại opening như thường; so sánh trong 1 cửa sổ năm tài chính (không
-so kỳ nên không cần align). Kênh = 3 kênh cấu hình + bucket "Khác" (mọi
-Customer Group ngoài 3 cây). Không margin/COGS (QĐ #3).
+so kỳ nên không cần align). Kênh = 4 kênh cấu hình (3 chính + Showroom) + bucket "Khác" (group ngoài mọi cây). Không margin/COGS (QĐ #3).
 """
 
 from __future__ import annotations
@@ -17,8 +16,8 @@ from pkd.api._metrics import customer_names
 from pkd.api.utils import _guard, channel_map
 
 # Nhãn + thứ tự kênh cố định cho báo cáo (màu FE map theo key — không đổi thứ tự).
-BC_CHANNELS = [("npp", "NPP"), ("mt", "MT"), ("dulich", "Du lịch"), ("khac", "Khác")]
-BC_FILTERS = {None, "", "npp", "mt", "dulich", "khac"}
+BC_CHANNELS = [("npp", "NPP"), ("mt", "MT"), ("dulich", "Du lịch"), ("showroom", "Showroom"), ("khac", "Khác")]
+BC_FILTERS = {None, "", "npp", "mt", "dulich", "showroom", "khac"}
 
 
 def _fiscal_years() -> list[dict]:

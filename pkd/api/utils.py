@@ -22,8 +22,11 @@ from frappe.utils import add_days, add_months, flt, get_first_day, get_last_day,
 SALES_ROLES = {"Sales Dashboard", "System Manager"}
 
 # ─── Kênh ───────────────────────────────────────────────────────────────────
+# 3 kênh CHÍNH (có trang phân tích riêng + QLK). Showroom là kênh PHỤ: chỉ xuất
+# hiện ở các bảng so sánh chung (Tổng quan MTD, Kinh doanh chung) — không view riêng.
 CHANNEL_KEYS = ("npp", "mt", "dulich")
-CHANNEL_LABELS = {"npp": "NPP", "mt": "MT", "dulich": "Du lịch"}
+CHANNEL_KEYS_EXT = ("npp", "mt", "dulich", "showroom")
+CHANNEL_LABELS = {"npp": "NPP", "mt": "MT", "dulich": "Du lịch", "showroom": "Showroom", "khac": "Khác"}
 _CHANNEL_MAP_CACHE = "pkd:channel_map"
 
 # ─── Đơn vị thùng (blueprint luật #4) — [VERIFY tên UOM trên site] ──────────
@@ -81,7 +84,9 @@ def channel_map() -> dict:
 		return cached
 
 	settings = get_settings()
-	roots = {"npp": settings.kenh_npp, "mt": settings.kenh_mt, "dulich": settings.kenh_dulich}
+	# .get cho kenh_showroom: field mới — site chưa migrate vẫn chạy (bỏ qua showroom).
+	roots = {"npp": settings.kenh_npp, "mt": settings.kenh_mt, "dulich": settings.kenh_dulich,
+		"showroom": settings.get("kenh_showroom")}
 	mapping: dict[str, str] = {}
 	for key, root in roots.items():
 		if not root:
@@ -111,7 +116,8 @@ def groups_of(channel: str) -> list[str]:
 def channel_root(channel: str) -> str | None:
 	"""Root Customer Group của 1 kênh (target.kenh lưu root này)."""
 	settings = get_settings()
-	return {"npp": settings.kenh_npp, "mt": settings.kenh_mt, "dulich": settings.kenh_dulich}.get(channel)
+	return {"npp": settings.kenh_npp, "mt": settings.kenh_mt, "dulich": settings.kenh_dulich,
+		"showroom": settings.get("kenh_showroom")}.get(channel)
 
 
 def channel_of_group(group: str) -> str | None:

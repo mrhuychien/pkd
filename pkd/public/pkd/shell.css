@@ -1050,3 +1050,6 @@
 .kd-adm-qrwrap { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
 .kd-adm-qr { background: #fff; padding: 12px; border-radius: 12px; border: 1px solid var(--kd-border); }
 .kd-adm-qr img, .kd-adm-qr canvas { display: block; }
+
+/* 5 kênh (3 chính + Showroom + Khác) trên màn rộng — mini panel 1 hàng */
+@media (min-width: 1200px) { .kd-mini-grid { grid-template-columns: repeat(5, 1fr); } }

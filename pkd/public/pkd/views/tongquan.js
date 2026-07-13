@@ -13,7 +13,7 @@ const bcCharts = chartRegistry();   // chart của section Kinh doanh chung (re-
 const govCharts = chartRegistry();  // chart của section Giám sát (re-render riêng)
 
 // Màu kênh CỐ ĐỊNH xuyên mọi chart (đã qua validator palette — màu theo thực thể).
-const CH_COLORS = { npp: '#f59e0b', mt: '#10b981', dulich: '#3b82f6', khac: '#ec4899' };
+const CH_COLORS = { npp: '#f59e0b', mt: '#10b981', dulich: '#3b82f6', showroom: '#8b5cf6', khac: '#ec4899' };
 // Palette top-10 (đã validate CVD; donut luôn kèm bảng giá trị làm secondary encoding).
 const TOP10 = ['#3b82f6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#ec4899', '#84cc16', '#8b5cf6', '#f97316', '#0d9488'];
 
@@ -44,10 +44,26 @@ export async function render({ container }) {
     container.innerHTML = html`
         ${banner({ title: `Xin chào, ${who}`, subtitle: `Nhịp hôm nay · ${todayStr}` })}
         <div id="kd-ov-tet"></div>
+
+        <!-- ═══ Kinh doanh chung — báo cáo quản trị theo năm tài chính (khối ĐẦU trang) ═══ -->
+        <div class="kd-flex kd-items-center kd-justify-between" style="flex-wrap:wrap;gap:8px;">
+            <h3 class="kd-font-bold">📊 Kinh doanh chung — năm tài chính</h3>
+            <div class="kd-filter-bar">
+                <label>Năm TC <select id="kd-bc-fy"></select></label>
+                <label>Kênh <select id="kd-bc-channel">
+                    <option value="">Tất cả</option><option value="npp">NPP</option>
+                    <option value="mt">MT</option><option value="dulich">Du lịch</option>
+                    <option value="showroom">Showroom</option><option value="khac">Khác</option>
+                </select></label>
+            </div>
+        </div>
+        <div id="kd-bc-body" class="kd-mt-2"><div class="kd-skeleton" style="height:320px;"></div></div>
+
+        <h3 class="kd-font-bold kd-mt-3">Nhịp hôm nay (MTD)</h3>
         <div class="kd-kpi-grid" id="kd-ov-kpis">
             ${cardSkeleton()}${cardSkeleton()}${cardSkeleton()}${cardSkeleton()}
         </div>
-        <h3 class="kd-font-bold kd-mt-3">3 kênh (MTD)</h3>
+        <h3 class="kd-font-bold kd-mt-3">Các kênh (MTD)</h3>
         <div class="kd-dashboard-grid" id="kd-ov-channels">
             ${cardSkeleton()}${cardSkeleton()}${cardSkeleton()}
         </div>
@@ -57,20 +73,6 @@ export async function render({ container }) {
             <h3 class="kd-font-bold">Cơ cấu nhóm hàng (MTD)</h3>
             <div class="kd-chart-wrap"><canvas id="kd-ov-mix"></canvas></div>
         </div>
-
-        <!-- ═══ Kinh doanh chung — báo cáo quản trị theo năm tài chính ═══ -->
-        <div class="kd-flex kd-items-center kd-justify-between kd-mt-3" style="flex-wrap:wrap;gap:8px;">
-            <h3 class="kd-font-bold">📊 Kinh doanh chung — năm tài chính</h3>
-            <div class="kd-filter-bar">
-                <label>Năm TC <select id="kd-bc-fy"></select></label>
-                <label>Kênh <select id="kd-bc-channel">
-                    <option value="">Tất cả</option><option value="npp">NPP</option>
-                    <option value="mt">MT</option><option value="dulich">Du lịch</option>
-                    <option value="khac">Khác</option>
-                </select></label>
-            </div>
-        </div>
-        <div id="kd-bc-body" class="kd-mt-2"><div class="kd-skeleton" style="height:320px;"></div></div>
 
         <!-- ═══ Giám sát & sức khoẻ kinh doanh (roster; 90N aligned + 12 tháng) ═══ -->
         <div class="kd-flex kd-items-center kd-justify-between kd-mt-3" style="flex-wrap:wrap;gap:8px;">
@@ -155,18 +157,21 @@ function renderChannels(ov) {
     const chs = ov.channels || [];
     const pace = ov.period?.pace_pct;
     if (!chs.length) { root.innerHTML = ''; return; }
+    // Kênh phụ (showroom/khac) KHÔNG có trang riêng → card tĩnh, không chevron.
+    const HAS_VIEW = new Set(['npp', 'mt', 'dulich']);
     root.innerHTML = chs.map((c) => {
         const attain = c.attainment_pct;
-        return html`
-        <a href="#/${c.key}" class="kd-card kd-dash-card">
+        const linked = HAS_VIEW.has(c.key);
+        const inner = html`
             <div class="kd-dash-info">
                 <div class="kd-dash-label">${escapeHtml(c.label)}</div>
                 <div class="kd-dash-value">${formatVNDShort(c.mtd || 0)}</div>
                 <div class="kd-dash-sub">${pctBadge(c.growth_pct)} · ${formatNumber(c.boxes_mtd || 0)} thùng</div>
                 <div class="kd-dash-sub"><span class="kd-badge ${paceClass(attain, pace)}">đạt ${attain != null ? attain.toFixed(0) + '%' : '—'}</span></div>
-            </div>
-            <i class="fas fa-chevron-right kd-dash-chev"></i>
-        </a>`;
+            </div>`;
+        return linked
+            ? html`<a href="#/${c.key}" class="kd-card kd-dash-card">${inner}<i class="fas fa-chevron-right kd-dash-chev"></i></a>`
+            : html`<div class="kd-card kd-dash-card">${inner}</div>`;
     }).join('');
 }
 
@@ -293,8 +298,14 @@ async function loadGovernance() {
 
 function bcRate(v) { return v == null ? '—' : v.toFixed(2) + '%'; }
 
-// YoY so FY trước — mẫu 0/null → null (FE hiện "—"); |prev| để an toàn khi net âm.
-function bcYoy(cur, prev) { return prev ? ((cur || 0) - prev) / Math.abs(prev) * 100 : null; }
+// YoY so FY trước — |prev| để an toàn khi net âm. Baseline < 1 triệu đ coi như
+// KHÔNG có năm trước (site mới nhập liệu) → trả null, tránh "▲ 1.298.640%" vô nghĩa.
+function bcYoy(cur, prev) {
+    if (!prev || Math.abs(prev) < 1e6) return null;
+    return ((cur || 0) - prev) / Math.abs(prev) * 100;
+}
+// Hiển thị giá trị năm trước: baseline vô nghĩa → "—" (không in "-1" gây bối rối).
+const pvTrieu = (v) => (v != null && Math.abs(v) >= 1e6 ? trieu(v) : '—');
 
 function renderBusinessReport(body, d) {
     const t = d.totals || {};
@@ -330,10 +341,10 @@ function renderBusinessReport(body, d) {
                 <div class="kd-stat-sub">${pctBadge(bcYoy(t.gross, pv.gross))} vs năm trước</div></div>
             <div class="kd-stat-tile kd-stat-danger"><div class="kd-stat-label">Doanh số trả về</div>
                 <div class="kd-stat-value" title="${formatVNDShort(t.returns)}">${trieu(t.returns)}</div>
-                <div class="kd-stat-sub">năm trước: ${trieu(pv.returns)}</div></div>
+                <div class="kd-stat-sub">năm trước: ${pvTrieu(pv.returns)}</div></div>
             <div class="kd-stat-tile kd-stat-success"><div class="kd-stat-label">Doanh số thực bán</div>
                 <div class="kd-stat-value" title="${formatVNDShort(t.net)}">${trieu(t.net)}</div>
-                <div class="kd-stat-sub">${pctBadge(bcYoy(t.net, pv.net))} vs năm trước (${trieu(pv.net)})</div></div>
+                <div class="kd-stat-sub">${pctBadge(bcYoy(t.net, pv.net))} vs năm trước (${pvTrieu(pv.net)})</div></div>
             <div class="kd-stat-tile kd-stat-warning"><div class="kd-stat-label">Tỷ lệ trả (%)</div>
                 <div class="kd-stat-value">${bcRate(t.return_rate_pct)}</div>
                 <div class="kd-stat-sub">năm trước: ${bcRate(pv.return_rate_pct)}</div></div>

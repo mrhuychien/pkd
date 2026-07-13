@@ -13,6 +13,7 @@ from frappe.utils import add_months, flt, getdate
 from pkd.api.utils import (
 	BOX_UOMS,
 	CHANNEL_KEYS,
+	CHANNEL_KEYS_EXT,
 	CHANNEL_LABELS,
 	_guard,
 	channel_map,
@@ -66,12 +67,13 @@ def _boxes_by_group(start, end) -> dict:
 
 
 def _to_channels(by_group: dict, cmap: dict) -> dict:
-	"""Gộp {group: value} → {channel_key: value} qua channel_map."""
-	out = {k: 0.0 for k in CHANNEL_KEYS}
+	"""Gộp {group: value} → {channel_key: value} qua channel_map.
+
+	Đủ mọi kênh cấu hình (kể cả Showroom) + bucket "khac" cho group ngoài
+	các cây (và hoá đơn không có customer_group)."""
+	out = {k: 0.0 for k in (*CHANNEL_KEYS_EXT, "khac")}
 	for grp, val in by_group.items():
-		key = cmap.get(grp)
-		if key:
-			out[key] += flt(val)
+		out[cmap.get(grp) or "khac"] += flt(val)
 	return out
 
 
@@ -82,8 +84,10 @@ def _targets_by_channel(nam: int, thang: int) -> dict:
 		settings.kenh_npp: "npp",
 		settings.kenh_mt: "mt",
 		settings.kenh_dulich: "dulich",
+		settings.get("kenh_showroom"): "showroom",
 	}
-	out = {k: 0.0 for k in CHANNEL_KEYS}
+	root_to_key.pop(None, None)
+	out = {k: 0.0 for k in CHANNEL_KEYS_EXT}
 	for t in frappe.get_all(
 		"Channel Sales Target",
 		filters={"nam": nam, "thang": str(thang)},
@@ -227,8 +231,9 @@ def get_overview():
 	targets = _targets_by_channel(period["end"].year, period["end"].month)
 
 	channels = []
-	for k in CHANNEL_KEYS:
-		tgt = targets.get(k) or 0
+	# 3 kênh chính + Showroom + Khác — kênh phụ chỉ so sánh chung, không view riêng.
+	for k in (*CHANNEL_KEYS_EXT, "khac"):
+		tgt = targets.get(k) or 0  # khac/showroom chưa đặt chỉ tiêu → 0
 		channels.append(
 			{
 				"key": k,

@@ -9,6 +9,7 @@
   "kenh_npp",
   "kenh_mt",
   "kenh_dulich",
+  "kenh_showroom",
   "segment_section",
   "nguong_tang_truong",
   "nguong_suy_giam",
@@ -54,6 +55,13 @@
    "label": "Nhóm KH kênh Du lịch",
    "options": "Customer Group",
    "reqd": 1
+  },
+  {
+   "fieldname": "kenh_showroom",
+   "fieldtype": "Link",
+   "label": "Kênh Showroom (root — kênh phụ, không phân tích riêng)",
+   "options": "Customer Group",
+   "reqd": 0
   },
   {
    "fieldname": "segment_section",
