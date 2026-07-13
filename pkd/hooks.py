@@ -26,7 +26,7 @@ web_include_js = []
 # Filter đúng tên role để export không gom role khác (nextcode-build).
 # ─────────────────────────────────────────────────────────────────────
 fixtures = [
-    {"doctype": "Role", "filters": [["name", "in", ["Sales Dashboard"]]]},
+    {"doctype": "Role", "filters": [["name", "in", ["Sales Dashboard", "PKD Truong Phong", "PKD Quan Ly Kenh"]]]},
 ]
 
 # MVP: mọi số liệu query-on-demand → KHÔNG cần doc_events/scheduler (Mục 5).

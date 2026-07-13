@@ -1032,3 +1032,21 @@
 .kd-vnmap-leg { display: inline-flex; align-items: center; gap: 5px; }
 .kd-vnmap-leg i { width: 14px; height: 10px; border-radius: 3px; display: inline-block;
     border: 1px solid var(--kd-border); }
+
+/* ─── Quản trị người dùng (admin) ──────────────────────────────────────────── */
+.kd-adm-form { display: grid; grid-template-columns: 1fr; gap: 10px; }
+@media (min-width: 768px) { .kd-adm-form { grid-template-columns: repeat(2, 1fr); } }
+.kd-adm-form label { display: flex; flex-direction: column; gap: 5px; font-size: .8rem;
+    font-weight: 700; color: var(--kd-text-2); }
+.kd-adm-form input, .kd-adm-form select { padding: 10px 12px; border: 1px solid var(--kd-border);
+    border-radius: 10px; background: var(--kd-surface); color: var(--kd-text);
+    font: 600 .9rem Inter, sans-serif; }
+.kd-adm-form input:focus, .kd-adm-form select:focus { outline: 2px solid var(--kd-primary); outline-offset: 1px; }
+.kd-btn-sm { padding: 6px 10px; border: 1px solid var(--kd-border); border-radius: 8px;
+    background: var(--kd-surface); color: var(--kd-text); font: 700 .74rem Inter, sans-serif;
+    cursor: pointer; }
+.kd-btn-sm:hover { border-color: var(--kd-primary); color: var(--kd-primary); }
+.kd-btn-sm:disabled { opacity: .5; cursor: default; }
+.kd-adm-qrwrap { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+.kd-adm-qr { background: #fff; padding: 12px; border-radius: 12px; border: 1px solid var(--kd-border); }
+.kd-adm-qr img, .kd-adm-qr canvas { display: block; }

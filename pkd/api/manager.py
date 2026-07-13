@@ -29,7 +29,7 @@ from frappe.utils import (
 )
 
 from pkd.api._debt_gl import channel_debt, debt_breakdown, gl_balance, gl_balances
-from pkd.api.utils import BOX_UOMS, CHANNEL_KEYS, CHANNEL_LABELS, _guard, get_settings, groups_of
+from pkd.api.utils import BOX_UOMS, CHANNEL_KEYS, CHANNEL_LABELS, _guard, get_settings, groups_of, guard_target_write
 
 # Nhãn "đơn vị khách" theo kênh (hiển thị trong view).
 CHANNEL_NOUN = {"npp": "NPP", "mt": "Chuỗi", "dulich": "Khách"}
@@ -546,6 +546,7 @@ def targets(channel: str, months: int = 1) -> dict:
 def set_target(customer: str, amount) -> dict:
 	"""Nhập/cập nhật mục tiêu doanh số THÁNG cho 1 khách."""
 	_guard()
+	guard_target_write()   # cấp Quản lý kênh chỉ xem
 	if not _has_target_field():
 		frappe.throw(_("Site chưa có field custom_monthly_target (cài app npp trước)."))
 	if not frappe.db.exists("Customer", customer):
@@ -558,6 +559,7 @@ def set_target(customer: str, amount) -> dict:
 def set_targets_bulk(data) -> dict:
 	"""Nhập target hàng loạt: data = [{customer, amount}]."""
 	_guard()
+	guard_target_write()   # cấp Quản lý kênh chỉ xem
 	if not _has_target_field():
 		frappe.throw(_("Site chưa có field custom_monthly_target (cài app npp trước)."))
 	if isinstance(data, str):

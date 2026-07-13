@@ -9,5 +9,27 @@
   "restrict_to_domain": null,
   "home_page": null,
   "two_factor_auth": 0
+ },
+ {
+  "doctype": "Role",
+  "name": "PKD Truong Phong",
+  "role_name": "PKD Truong Phong",
+  "desk_access": 0,
+  "disabled": 0,
+  "is_custom": 1,
+  "restrict_to_domain": null,
+  "home_page": "/kd",
+  "two_factor_auth": 0
+ },
+ {
+  "doctype": "Role",
+  "name": "PKD Quan Ly Kenh",
+  "role_name": "PKD Quan Ly Kenh",
+  "desk_access": 0,
+  "disabled": 0,
+  "is_custom": 1,
+  "restrict_to_domain": null,
+  "home_page": "/kd",
+  "two_factor_auth": 0
  }
 ]

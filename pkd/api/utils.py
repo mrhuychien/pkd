@@ -49,6 +49,18 @@ def _guard():
 		frappe.throw(_("Chỉ Phòng Kinh doanh truy cập được."), frappe.PermissionError)
 
 
+def guard_target_write():
+	"""Cấp 'PKD Quan Ly Kenh' CHỈ XEM — ghi chỉ tiêu cần Trưởng phòng.
+
+	Chỉ chặn user mang role Quan Ly Kenh mà KHÔNG có quyền cao hơn — user cũ
+	(chỉ Sales Dashboard) giữ nguyên quyền như trước, không hồi quy. Gọi SAU
+	_guard() ở mọi method ghi chỉ tiêu (targets.save_target, manager.set_target*)."""
+	roles = set(frappe.get_roles())
+	if "PKD Quan Ly Kenh" in roles and not ({"System Manager", "PKD Truong Phong"} & roles):
+		frappe.throw(_("Quyền Quản lý kênh chỉ xem — sửa chỉ tiêu cần cấp Trưởng phòng."),
+			frappe.PermissionError)
+
+
 # ─── Settings ────────────────────────────────────────────────────────────────
 def get_settings():
 	"""Trả PKD Settings (cached doc). Ngưỡng segment/aging/MT/hạng/Tết đọc từ đây."""

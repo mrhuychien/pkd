@@ -17,6 +17,7 @@ from pkd.api.utils import (
 	CHANNEL_KEYS,
 	CHANNEL_LABELS,
 	_guard,
+	guard_target_write,
 	channel_map,
 	get_settings,
 	pct,
@@ -89,6 +90,7 @@ def get_targets(nam):
 def save_target(data):
 	"""Upsert 1 ô chỉ tiêu theo combo (nam,thang,kenh). Validate ở controller (Mục 2.1)."""
 	_guard()
+	guard_target_write()   # cấp Quản lý kênh chỉ xem
 	if isinstance(data, str):
 		data = json.loads(data)
 

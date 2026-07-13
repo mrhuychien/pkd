@@ -6,7 +6,7 @@ import * as store from './lib/store.js';
 
 // Dấu vết build — đổi mỗi lần sửa shell/routes. Gõ `PKD.build` trong Console
 // để biết trình duyệt đang chạy bản nào (chẩn đoán shell cũ/mới tức thì).
-const BUILD = 'qlk-r3';
+const BUILD = 'adm-r4';
 
 // ─── 1. Sanity check ───────────────────────────────────────────────────
 if (!window.PKD_CONTEXT) {
@@ -53,6 +53,8 @@ const VIEW_MODULES = {
     '/ql-alert' : () => import(withV('./views/ql-alert.js')),
     '/ql-debt'  : () => import(withV('./views/ql-debt.js')),
     '/ql-ds'    : () => import(withV('./views/ql-ds.js')),
+    // Quản trị người dùng (chỉ Administrator — server vẫn guard mọi method)
+    '/quan-tri' : () => import(withV('./views/quantri.js')),
 };
 
 const TITLES = {
@@ -73,6 +75,7 @@ const TITLES = {
     '/ql-alert' : 'QL · Cần xử lý',
     '/ql-debt'  : 'QL · Công nợ',
     '/ql-ds'    : 'QL · DS tháng',
+    '/quan-tri' : 'Quản trị người dùng',
 };
 
 async function renderRoute(routeKey, ctx) {
@@ -98,6 +101,7 @@ const DESK_NAV = [
     ['/ql-ov', '🛠 Quản lý kênh'],
     ['/trungbay', '🎁 Trưng bày'], ['/tet', '🧧 Tết'], ['/chitieu', '🎯 Chỉ tiêu'], ['/khampha', '🔍 Khám phá'],
 ];
+if (window.PKD_CONTEXT?.isAdmin) DESK_NAV.push(['/quan-tri', '👤 Người dùng']);
 (function buildDesktopNav() {
     const app = document.getElementById('kd-app');
     const main = document.getElementById('kd-view');
@@ -118,7 +122,7 @@ function highlightDesktopNav(path) {
 
 // ─── 6. Routes ─────────────────────────────────────────────────────────
 const simple = ['/', '/npp', '/mt', '/dulich', '/them', '/trungbay', '/tet', '/chitieu', '/khampha',
-                '/ql-ov', '/ql-sp', '/ql-khach', '/ql-target', '/ql-alert', '/ql-debt', '/ql-ds'];
+                '/ql-ov', '/ql-sp', '/ql-khach', '/ql-target', '/ql-alert', '/ql-debt', '/ql-ds', '/quan-tri'];
 simple.forEach((r) => {
     router.add(r, ({ query }) => { highlightActiveRoute(r); return renderRoute(r, { query }); });
 });

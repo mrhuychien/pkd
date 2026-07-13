@@ -50,6 +50,7 @@
         userFirstName: {{ user_first_name|tojson }},
         userFullName: {{ user_full_name|tojson }},
         authorized: {{ (authorized or 0)|tojson }},
+        isAdmin: {{ (is_admin or 0)|tojson }},
         baseUrl: "{{ frappe.utils.get_url() }}",
         csrfToken: "{{ frappe.session.csrf_token if frappe.session.csrf_token else '' }}",
         // Đổi mỗi lần tải trang (server-rendered) → cache-bust view module lazy-load.

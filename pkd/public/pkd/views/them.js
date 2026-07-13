@@ -9,6 +9,11 @@ export async function render({ container }) {
         ['#/trungbay', '🎁', 'Trưng bày', 'Chương trình trưng bày (đọc từ salep)'],
         ['#/tet', '🧧', 'Tết', 'Theo dõi doanh số mùa Tết theo mốc D-N'],
     ];
+    // Chỉ Administrator thấy mục quản trị (server vẫn guard mọi method).
+    if (window.PKD_CONTEXT?.isAdmin) {
+        items.push(['#/quan-tri', '👤', 'Quản trị người dùng',
+            'Tạo user portal (Trưởng phòng / Quản lý kênh) + QR đăng nhập ngay, chặn Desk']);
+    }
     container.innerHTML = html`
         ${banner({ title: 'Thêm', subtitle: 'Các chuyên đề khác' })}
         <div class="kd-menu-list">

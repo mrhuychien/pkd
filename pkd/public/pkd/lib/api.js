@@ -74,6 +74,14 @@ export const getGovernance       = (channel) => call('pkd.api.governance.get_gov
 // Doanh số theo tỉnh cho bản đồ toàn quốc (chuẩn hoá 34 tỉnh mới)
 export const getProvinceSales    = (fiscal_year, channel) => call('pkd.api.geo.get_province_sales', { fiscal_year, channel });
 
+// Quản trị người dùng portal (chỉ System Manager — guard ở server)
+export const admin = {
+    listUsers:  ()                              => call('pkd.api.admin.list_portal_users'),
+    createUser: (email, full_name, level, mobile) => call('pkd.api.admin.create_portal_user', { email, full_name, level, mobile }),
+    renewQr:    (user)                          => call('pkd.api.admin.renew_qr', { user }),
+    setEnabled: (user, enabled)                 => call('pkd.api.admin.set_enabled', { user, enabled }),
+};
+
 // P2
 export const getDisplaySummary   = ()          => call('pkd.api.display.get_display_summary');
 export const getTetDashboard     = (args)      => call('pkd.api.tet.get_tet_dashboard', args || {});

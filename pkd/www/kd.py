@@ -16,7 +16,7 @@ SALES_ROLES = {"Sales Dashboard", "System Manager"}
 
 # PHẢI khớp hằng BUILD trong public/pkd/shell.js — dùng để phát hiện tầng cache
 # (CDN/proxy) trả shell.js cũ dù HTML đã mới (kd.html so sánh và cảnh báo).
-SHELL_BUILD = "qlk-r3"
+SHELL_BUILD = "adm-r4"
 
 
 def get_context(context: dict) -> dict:
@@ -27,6 +27,7 @@ def get_context(context: dict) -> dict:
 
 	roles = set(frappe.get_roles())
 	authorized = bool(SALES_ROLES & roles)
+	is_admin = "System Manager" in roles
 
 	user_doc = frappe.db.get_value(
 		"User", frappe.session.user, ["first_name", "full_name"], as_dict=True
@@ -39,6 +40,7 @@ def get_context(context: dict) -> dict:
 			"user_first_name": user_doc.get("first_name") or "",
 			"user_full_name": user_doc.get("full_name") or frappe.session.user,
 			"authorized": 1 if authorized else 0,
+			"is_admin": 1 if is_admin else 0,
 			"shell_build": SHELL_BUILD,
 			"no_cache": 1,
 		}
