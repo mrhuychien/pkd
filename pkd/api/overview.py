@@ -99,10 +99,9 @@ def _targets_by_channel(nam: int, thang: int) -> dict:
 	return out
 
 
-def _mix_item_group(start, end, groups: list[str], limit: int = 10) -> list[dict]:
-	"""Top nhóm hàng theo doanh số dòng (sii.amount) trong kỳ, thuộc 3 kênh."""
-	if not groups:
-		return []
+def _mix_item_group(start, end, limit: int = 10) -> list[dict]:
+	"""Top nhóm hàng theo doanh số dòng trong kỳ — TOÀN BỘ Sales Invoice
+	(toàn phòng không lọc theo cây kênh, kẻo rớt hoá đơn ngoài cây)."""
 	rows = frappe.db.sql(
 		"""
 		SELECT sii.item_group AS item_group, SUM(sii.net_amount) AS amount
@@ -111,11 +110,10 @@ def _mix_item_group(start, end, groups: list[str], limit: int = 10) -> list[dict
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
 		  AND si.posting_date BETWEEN %(start)s AND %(end)s
-		  AND si.customer_group IN %(groups)s
 		GROUP BY sii.item_group
 		ORDER BY amount DESC
 		""",
-		{"start": start, "end": end, "groups": tuple(groups)},
+		{"start": start, "end": end},
 		as_dict=True,
 	)
 	total = sum(flt(r.amount) for r in rows)
@@ -130,10 +128,8 @@ def _mix_item_group(start, end, groups: list[str], limit: int = 10) -> list[dict
 	return out
 
 
-def _aging_total(groups: list[str], today) -> dict:
-	"""Aging công nợ theo COALESCE(due_date,posting_date). GIỮ opening (nợ thật)."""
-	if not groups:
-		return {"current": 0, "d1_30": 0, "d31_60": 0, "d61_90": 0, "d90p": 0, "total": 0, "dso": None}
+def _aging_total(today) -> dict:
+	"""Aging công nợ TOÀN BỘ khách (COALESCE(due_date,posting_date)). GIỮ opening."""
 	row = frappe.db.sql(
 		"""
 		SELECT
@@ -151,14 +147,13 @@ def _aging_total(groups: list[str], today) -> dict:
 		FROM `tabSales Invoice` si
 		WHERE si.docstatus = 1
 		  AND si.outstanding_amount > 0
-		  AND si.customer_group IN %(groups)s
 		""",
-		{"today": today, "groups": tuple(groups)},
+		{"today": today},
 		as_dict=True,
 	)[0]
 	total_debt = flt(row.total)
 	# DSO = nợ / doanh số 12 tháng × 365 (doanh số loại opening).
-	rev12 = _revenue_window(groups, add_months(getdate(today), -12), today)
+	rev12 = _revenue_window(add_months(getdate(today), -12), today)
 	dso = round(total_debt / rev12 * 365, 1) if rev12 else None
 	return {
 		"current": flt(row.current_amt),
@@ -171,10 +166,8 @@ def _aging_total(groups: list[str], today) -> dict:
 	}
 
 
-def _revenue_window(groups: list[str], start, end) -> float:
-	"""Tổng doanh số kênh trong [start,end] (loại opening) — cho DSO."""
-	if not groups:
-		return 0.0
+def _revenue_window(start, end) -> float:
+	"""Tổng doanh số TOÀN BỘ Sales Invoice trong [start,end] (loại opening) — cho DSO."""
 	row = frappe.db.sql(
 		"""
 		SELECT SUM(si.net_total) AS amt
@@ -182,18 +175,15 @@ def _revenue_window(groups: list[str], start, end) -> float:
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
 		  AND si.posting_date BETWEEN %(start)s AND %(end)s
-		  AND si.customer_group IN %(groups)s
 		""",
-		{"start": start, "end": end, "groups": tuple(groups)},
+		{"start": start, "end": end},
 		as_dict=True,
 	)[0]
 	return flt(row.amt)
 
 
-def _invoices_buyers(groups: list[str], start, end) -> dict:
-	"""Số hoá đơn + số khách mua trong kỳ (3 kênh, loại opening)."""
-	if not groups:
-		return {"invoices": 0, "buyers": 0}
+def _invoices_buyers(start, end) -> dict:
+	"""Số hoá đơn + số khách mua trong kỳ — TOÀN BỘ Sales Invoice (loại opening)."""
 	row = frappe.db.sql(
 		"""
 		SELECT COUNT(*) AS invoices, COUNT(DISTINCT si.customer) AS buyers
@@ -201,9 +191,8 @@ def _invoices_buyers(groups: list[str], start, end) -> dict:
 		WHERE si.docstatus = 1
 		  AND IFNULL(si.is_opening, 'No') != 'Yes'
 		  AND si.posting_date BETWEEN %(start)s AND %(end)s
-		  AND si.customer_group IN %(groups)s
 		""",
-		{"start": start, "end": end, "groups": tuple(groups)},
+		{"start": start, "end": end},
 		as_dict=True,
 	)[0]
 	return {"invoices": row.invoices or 0, "buyers": row.buyers or 0}
@@ -219,7 +208,6 @@ def get_overview():
 	prev = shift_period(period, 1)
 	yoy = shift_period(period, 12)
 	cmap = channel_map()
-	all_groups = list(cmap.keys())
 
 	# Doanh số theo group cho 4 mốc + thùng.
 	ch_mtd = _to_channels(_rev_by_group(period["start"], period["end"]), cmap)
@@ -253,7 +241,7 @@ def get_overview():
 	total_yoy = sum(ch_yoy.values())
 	total_today = sum(ch_today.values())
 	total_target = sum(v for v in targets.values() if v)
-	ib = _invoices_buyers(all_groups, period["start"], period["end"])
+	ib = _invoices_buyers(period["start"], period["end"])
 
 	total = {
 		"today": total_today,
@@ -283,8 +271,8 @@ def get_overview():
 		},
 		"total": total,
 		"channels": channels,
-		"mix_item_group": _mix_item_group(period["start"], period["end"], all_groups),
-		"aging_total": _aging_total(all_groups, period["end"]),
+		"mix_item_group": _mix_item_group(period["start"], period["end"]),
+		"aging_total": _aging_total(period["end"]),
 		"action_counts": action_counts,
 		"tet": tet_banner_info(period["end"], int(get_settings().tet_cua_so_ngay or 60)),
 	}
