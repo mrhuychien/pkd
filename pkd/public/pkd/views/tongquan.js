@@ -44,6 +44,7 @@ export async function render({ container }) {
     container.innerHTML = html`
         ${banner({ title: `Xin chào, ${who}`, subtitle: `Nhịp hôm nay · ${todayStr}` })}
         <div id="kd-ov-tet"></div>
+        <div id="kd-ov-npptt"></div>
 
         <!-- ═══ Kinh doanh chung — báo cáo quản trị theo năm tài chính (khối ĐẦU trang) ═══ -->
         <div class="kd-flex kd-items-center kd-justify-between" style="flex-wrap:wrap;gap:8px;">
@@ -92,6 +93,7 @@ export async function render({ container }) {
     document.getElementById('kd-gov-channel').addEventListener('change', () => loadGovernance());
     loadBusinessReport();   // tải song song với overview
     loadGovernance();
+    loadNppPaymentAlert();  // banner cảnh báo thanh toán NPP (kế toán)
 
     try {
         const [ov, q] = await Promise.all([
@@ -295,6 +297,24 @@ async function loadGovernance() {
             <div class="kd-empty-title">Không tải được bộ giám sát</div>
             <div class="kd-text-sm">${escapeHtml(err.message)}</div></div>`;
     }
+}
+
+// Banner cảnh báo thanh toán NPP kỳ hiện tại — chỉ hiện khi có NPP cần xử lý.
+async function loadNppPaymentAlert() {
+    const root = document.getElementById('kd-ov-npptt');
+    if (!root) return;
+    try {
+        const d = await api.getNppPayment(null, null);
+        const s = d.summary || {};
+        const bad = (s.n_cut || 0) + (s.n_penalty || 0) + (s.n_overdue || 0);
+        if (!bad) { root.innerHTML = ''; return; }
+        root.innerHTML = html`
+            <a href="#/npp-tt" class="kd-card kd-mb-2" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--kd-text);border-left:4px solid var(--kd-danger);">
+                <span style="font-size:1.6rem;">💳</span>
+                <span><b>${formatNumber(s.n_overdue || 0)} NPP quá hạn thanh toán</b>${s.n_cut ? ` · ${formatNumber(s.n_cut)} bị cắt thưởng` : ''}${s.n_penalty ? ` · ${formatNumber(s.n_penalty)} bị phạt 50%` : ''}.
+                    Thưởng bị cắt/giảm <b>${formatVNDShort(s.total_thuong_mat || 0)}</b> — kế toán xử lý →</span>
+            </a>`;
+    } catch { root.innerHTML = ''; }   // lỗi phụ không phá trang chủ
 }
 
 function bcRate(v) { return v == null ? '—' : v.toFixed(2) + '%'; }

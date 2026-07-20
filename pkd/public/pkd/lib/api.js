@@ -74,6 +74,9 @@ export const getGovernance       = (channel) => call('pkd.api.governance.get_gov
 // Doanh số theo tỉnh cho bản đồ toàn quốc (chuẩn hoá 34 tỉnh mới)
 export const getProvinceSales    = (fiscal_year, channel) => call('pkd.api.geo.get_province_sales', { fiscal_year, channel });
 
+// Chính sách thanh toán NPP — danh sách cảnh báo cho kế toán
+export const getNppPayment       = (nam, thang) => call('pkd.api.npp_payment.get_npp_payment', { nam, thang });
+
 // Quản trị người dùng portal (chỉ System Manager — guard ở server)
 export const admin = {
     listUsers:  ()                              => call('pkd.api.admin.list_portal_users'),

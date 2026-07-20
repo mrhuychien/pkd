@@ -4,6 +4,7 @@ import { banner } from '../components/banner.js';
 export async function render({ container }) {
     const items = [
         ['#/ql-ov?k=npp', '🛠', 'Quản lý kênh', 'Bộ phân tích sâu NPP · MT · Du lịch (tổng quan, sản phẩm, mục tiêu, công nợ...)'],
+        ['#/npp-tt', '💳', 'Thanh toán NPP', 'Cảnh báo NPP quá hạn thanh toán + tác động thưởng 2% — kế toán xử lý'],
         ['#/khampha', '🔍', 'Khám phá', 'Bóc tách doanh số/sản lượng linh hoạt + tải CSV'],
         ['#/chitieu', '🎯', 'Chỉ tiêu', 'Ma trận 12 tháng × 3 kênh, nhập ngay tại đây'],
         ['#/trungbay', '🎁', 'Trưng bày', 'Chương trình trưng bày (đọc từ salep)'],

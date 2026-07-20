@@ -6,7 +6,7 @@ import * as store from './lib/store.js';
 
 // Dấu vết build — đổi mỗi lần sửa shell/routes. Gõ `PKD.build` trong Console
 // để biết trình duyệt đang chạy bản nào (chẩn đoán shell cũ/mới tức thì).
-const BUILD = 'adm-r4';
+const BUILD = 'npptt-r5';
 
 // ─── 1. Sanity check ───────────────────────────────────────────────────
 if (!window.PKD_CONTEXT) {
@@ -55,6 +55,8 @@ const VIEW_MODULES = {
     '/ql-ds'    : () => import(withV('./views/ql-ds.js')),
     // Quản trị người dùng (chỉ Administrator — server vẫn guard mọi method)
     '/quan-tri' : () => import(withV('./views/quantri.js')),
+    // Chính sách thanh toán NPP — danh sách cảnh báo cho kế toán
+    '/npp-tt'   : () => import(withV('./views/npp-thanhtoan.js')),
 };
 
 const TITLES = {
@@ -76,6 +78,7 @@ const TITLES = {
     '/ql-debt'  : 'QL · Công nợ',
     '/ql-ds'    : 'QL · DS tháng',
     '/quan-tri' : 'Quản trị người dùng',
+    '/npp-tt'   : 'Thanh toán NPP',
 };
 
 async function renderRoute(routeKey, ctx) {
@@ -122,7 +125,7 @@ function highlightDesktopNav(path) {
 
 // ─── 6. Routes ─────────────────────────────────────────────────────────
 const simple = ['/', '/npp', '/mt', '/dulich', '/them', '/trungbay', '/tet', '/chitieu', '/khampha',
-                '/ql-ov', '/ql-sp', '/ql-khach', '/ql-target', '/ql-alert', '/ql-debt', '/ql-ds', '/quan-tri'];
+                '/ql-ov', '/ql-sp', '/ql-khach', '/ql-target', '/ql-alert', '/ql-debt', '/ql-ds', '/quan-tri', '/npp-tt'];
 simple.forEach((r) => {
     router.add(r, ({ query }) => { highlightActiveRoute(r); return renderRoute(r, { query }); });
 });

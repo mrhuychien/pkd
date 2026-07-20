@@ -9,12 +9,13 @@ import { emptyState } from './empty-state.js';
  * @param {function?}                    opts.onRowClick
  * @param {string?}                      opts.emptyMessage
  */
-export function dataTable({ columns, rows, onRowClick, emptyMessage = 'Không có dữ liệu' }) {
+export function dataTable({ columns, rows, onRowClick, emptyMessage = 'Không có dữ liệu', rowStyle = null }) {
     if (!rows || rows.length === 0) {
         return emptyState({ icon: '📭', title: emptyMessage });
     }
     const renderCell = (col, row) => col.render ? col.render(row) : escapeHtml(row[col.key] ?? '');
     const clickable  = onRowClick ? 'kd-table-row-clickable' : '';
+    // rowStyle(row) → chuỗi inline-style (đã kiểm soát, không phải dữ liệu người dùng).
     return html`
         <table class="kd-table">
             <thead>
@@ -22,7 +23,7 @@ export function dataTable({ columns, rows, onRowClick, emptyMessage = 'Không c�
             </thead>
             <tbody>
                 ${rows.map((row, i) => html`
-                    <tr class="${clickable}" data-row-index="${i}">
+                    <tr class="${clickable}" data-row-index="${i}"${rowStyle ? ` style="${rowStyle(row)}"` : ''}>
                         ${columns.map((c) => html`<td data-label="${escapeHtml(c.label)}">${renderCell(c, row)}</td>`).join('')}
                     </tr>
                 `).join('')}
@@ -105,13 +106,13 @@ export function paged({ rows, render, pageSize = 10, onDraw = null }) {
 }
 
 /** dataTable có phân trang sẵn (10 dòng/trang). Cùng tham số dataTable + pageSize. */
-export function pagedTable({ columns, rows, emptyMessage = 'Không có dữ liệu', pageSize = 10, onDraw = null }) {
+export function pagedTable({ columns, rows, emptyMessage = 'Không có dữ liệu', pageSize = 10, onDraw = null, rowStyle = null }) {
     if (!rows || rows.length === 0) {
         return emptyState({ icon: '📭', title: emptyMessage });
     }
     return paged({
         rows, pageSize, onDraw,
-        render: (slice) => dataTable({ columns, rows: slice, emptyMessage }),
+        render: (slice) => dataTable({ columns, rows: slice, emptyMessage, rowStyle }),
     });
 }
 

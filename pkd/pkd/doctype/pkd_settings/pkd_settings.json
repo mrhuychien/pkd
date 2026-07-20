@@ -27,7 +27,13 @@
   "hang_a_vnd",
   "hang_b_vnd",
   "tet_section",
-  "tet_cua_so_ngay"
+  "tet_cua_so_ngay",
+  "tt_section",
+  "tt_ngay_chot",
+  "tt_ngay_han",
+  "tt_thuong_pct",
+  "tt_phat_tu_ngay",
+  "tt_cat_tu_ngay"
  ],
  "fields": [
   {
@@ -164,6 +170,41 @@
    "fieldname": "tet_cua_so_ngay",
    "fieldtype": "Int",
    "label": "Cửa sổ Tết (D-N → D-0)"
+  },
+  {
+   "fieldname": "tt_section",
+   "fieldtype": "Section Break",
+   "label": "Chính sách thanh toán NPP"
+  },
+  {
+   "fieldname": "tt_ngay_chot",
+   "fieldtype": "Int",
+   "default": "5",
+   "label": "Ngày chốt đơn đến hạn (hàng tháng)"
+  },
+  {
+   "fieldname": "tt_ngay_han",
+   "fieldtype": "Int",
+   "default": "10",
+   "label": "Hạn cuối NPP thanh toán (hàng tháng)"
+  },
+  {
+   "fieldname": "tt_thuong_pct",
+   "fieldtype": "Percent",
+   "default": "2",
+   "label": "% thưởng doanh số nếu thanh toán đúng hạn"
+  },
+  {
+   "fieldname": "tt_phat_tu_ngay",
+   "fieldtype": "Int",
+   "default": "6",
+   "label": "Quá hạn từ N ngày → phạt 50% thưởng"
+  },
+  {
+   "fieldname": "tt_cat_tu_ngay",
+   "fieldtype": "Int",
+   "default": "11",
+   "label": "Quá hạn từ N ngày → cắt thưởng"
   }
  ],
  "index_web_pages_for_search": 1,
