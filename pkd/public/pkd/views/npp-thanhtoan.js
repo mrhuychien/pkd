@@ -83,7 +83,7 @@ function renderReport(body, d) {
     body.innerHTML = html`
         <div class="kd-text-sm kd-text-muted kd-mb-2">
             Kỳ <b>tháng ${p.thang}/${p.nam}</b> · chốt đơn đến hạn ngày <b>${formatDate(p.chot)}</b> ·
-            hạn thanh toán <b>${formatDate(p.deadline)}</b> · thưởng <b>${formatNumber(p.thuong_pct)}%</b> doanh số ·
+            hạn thanh toán <b>${formatDate(p.deadline)}</b> · thưởng <b>${parseFloat(Number(p.thuong_pct || 0).toFixed(2))}%</b> doanh số ·
             tính đến ${formatDate(p.asof)}.<br>
             Quá hạn: ${tiers}. ${escapeHtml(PHASE_NOTE[p.phase] || '')}
             <br>Doanh số thưởng = net trước VAT của tháng; phải thu = hoá đơn đến hạn còn nợ (giữ opening).

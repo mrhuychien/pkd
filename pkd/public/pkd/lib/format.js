@@ -46,10 +46,17 @@ export function todayISO() {
     ].join('-');
 }
 
+// ATTRIBUTE-SAFE: mã hoá cả " và ' (không chỉ &<>) để dùng an toàn CẢ trong
+// text lẫn trong thuộc tính có nháy — vd href="#${escapeHtml(route)}". Docname
+// Frappe KHÔNG cấm dấu nháy → nếu chỉ escape &<> thì tên khách chứa " sẽ thoát
+// khỏi thuộc tính (stored XSS). Mã hoá quote vô hại trong text (hiện đúng ").
 export function escapeHtml(s) {
-    const div = document.createElement('div');
-    div.textContent = String(s ?? '');
-    return div.innerHTML;
+    return String(s ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 export function debounce(fn, wait = 300) {

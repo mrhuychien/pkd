@@ -50,11 +50,15 @@ def _policy(settings) -> dict:
 	phat_tu = cint(settings.get("tt_phat_tu_ngay")) or 6
 	cat_tu = cint(settings.get("tt_cat_tu_ngay")) or 11
 	thuong_pct = flt(settings.get("tt_thuong_pct")) or 2.0
-	# Bảo toàn thứ tự hợp lệ: 1 ≤ phat_tu < cat_tu.
+	# Bảo toàn thứ tự hợp lệ: 1 ≤ phat_tu < cat_tu; ngày hạn ≥ ngày chốt
+	# (nếu admin đặt hạn < chốt thì pha in_window bất khả → NPP quá hạn bị gán
+	# nhầm "chưa tới kỳ chốt" + giữ đủ thưởng; kẹp lại để không mislabel).
 	if phat_tu < 1:
 		phat_tu = 1
 	if cat_tu <= phat_tu:
 		cat_tu = phat_tu + 1
+	if ngay_han < ngay_chot:
+		ngay_han = ngay_chot
 	return {"ngay_chot": ngay_chot, "ngay_han": ngay_han, "phat_tu": phat_tu,
 		"cat_tu": cat_tu, "thuong_pct": thuong_pct}
 
