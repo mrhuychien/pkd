@@ -33,6 +33,8 @@ _CHANNEL_MAP_CACHE = "pkd:channel_map"
 BOX_UOMS = ("Thùng", "Box")
 
 # ─── Bảng mùng 1 Tết âm (blueprint Mục 10) ─────────────────────────────────
+# Nguồn chính: BC Settings › BC Tet Date của app bc (một nguồn cho cả hệ thống — xem
+# tet_dates_map). Bảng dưới chỉ là DỰ PHÒNG cho site chưa cài bc / năm bc chưa khai.
 # [VERIFY từng ngày với lịch vạn niên]. Các mốc 2015–2028 đã đối chiếu giá trị
 # phổ biến; 2029–2035 cần soát lại nguồn lịch âm trước khi dùng cho báo cáo Tết.
 TET_DATES = {
@@ -207,9 +209,27 @@ def run_rate(mtd_value, period: dict):
 
 
 # ─── Tết ─────────────────────────────────────────────────────────────────────
-def tet_date(year: int):
-	"""Ngày mùng 1 Tết dương lịch của `year` (getdate) hoặc None nếu ngoài bảng."""
-	d = TET_DATES.get(int(year))
+def _bc_tet_dates() -> dict:
+	"""{năm: 'YYYY-MM-DD'} khai trong BC Settings (app bc). Đọc mềm: site chưa cài bc /
+	bảng chưa migrate → {} (bench nhiều site: package bc import được mà site không có)."""
+	try:
+		if not (frappe.db.exists("DocType", "BC Tet Date") and frappe.db.table_exists("BC Tet Date")):
+			return {}
+		rows = frappe.get_all("BC Tet Date", fields=["year", "tet_date"],
+			filters={"parent": "BC Settings", "parenttype": "BC Settings", "parentfield": "tet_dates"})
+	except Exception:
+		return {}
+	return {int(r.year): str(getdate(r.tet_date)) for r in rows if r.year and r.tet_date}
+
+
+def tet_dates_map() -> dict:
+	"""{năm: 'YYYY-MM-DD'}: BC Settings đè TỪNG NĂM lên TET_DATES (dự phòng khi bc chưa cài / năm chưa khai)."""
+	return {**TET_DATES, **_bc_tet_dates()}
+
+
+def tet_date(year: int, dates: dict | None = None):
+	"""Ngày mùng 1 Tết dương lịch của `year` (getdate) hoặc None nếu chưa có mốc."""
+	d = (dates if dates is not None else tet_dates_map()).get(int(year))
 	return getdate(d) if d else None
 
 
@@ -219,12 +239,12 @@ def iso(d):
 
 
 def tet_banner_info(today=None, window: int = 60):
-	"""Thông tin thẻ "Mùa Tết" cho Tổng quan. None nếu ngoài bảng TET_DATES.
+	"""Thông tin thẻ "Mùa Tết" cho Tổng quan. None nếu chưa có mốc Tết sắp tới (BC Settings/TET_DATES).
 
 	in_window = còn trong cửa sổ Tết sắp tới (days_to_tet <= window).
 	"""
 	today = getdate(today) if today else getdate(nowdate())
-	upcoming = sorted(getdate(d) for d in TET_DATES.values() if getdate(d) >= today)
+	upcoming = sorted(getdate(d) for d in tet_dates_map().values() if getdate(d) >= today)
 	if not upcoming:
 		return None
 	td = upcoming[0]
