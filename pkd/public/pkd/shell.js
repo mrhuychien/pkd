@@ -6,7 +6,7 @@ import * as store from './lib/store.js';
 
 // Dấu vết build — đổi mỗi lần sửa shell/routes. Gõ `PKD.build` trong Console
 // để biết trình duyệt đang chạy bản nào (chẩn đoán shell cũ/mới tức thì).
-const BUILD = 'ngay-r6';
+const BUILD = 'path-r7';
 
 // ─── 1. Sanity check ───────────────────────────────────────────────────
 if (!window.PKD_CONTEXT) {
@@ -31,7 +31,9 @@ document.getElementById('kd-btn-back')?.addEventListener('click', () => {
     history.length > 1 ? history.back() : router.navigate('/');
 });
 
-// ─── 5. Lazy-load views (code-split per route, cache-bust bằng assetVersion) ─
+// ─── 5. Lazy-load views (code-split per route) ──────────────────────────
+// shell.js được nạp từ /kd-assets/<ver>/ (phiên bản nằm trong ĐƯỜNG DẪN) nên './views/x.js'
+// tự mang phiên bản; ?v=assetVersion (= cùng băm nội dung) chỉ là lớp phụ, ổn định giữa các lần tải.
 const ASSET_V = encodeURIComponent(window.PKD_CONTEXT?.assetVersion || '');
 const withV = (path) => (ASSET_V ? `${path}?v=${ASSET_V}` : path);
 const VIEW_MODULES = {

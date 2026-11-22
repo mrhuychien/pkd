@@ -3,7 +3,6 @@
 {% block title %}Dashboard Phòng KD{% endblock %}
 
 {% block head_include %}
-{% set kd_v = (frappe.utils.now() | replace(" ", "T") | replace(":", "-")) %}
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <meta name="theme-color" content="#0f172a">
 
@@ -11,37 +10,12 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-<link rel="stylesheet" href="/assets/pkd/pkd/shell.css?v={{ kd_v }}">
+<link rel="stylesheet" href="{{ asset_base }}/shell.css">
 
-<!-- Import map: version-bust MỌI shared module (lib/ + components/). ES static
-     import KHÔNG kế thừa ?v= của module cha → nếu không remap ở đây trình duyệt
-     chạy bản cache cũ (Frappe cache /assets 'immutable' 1 năm) gây lỗi "does not
-     provide an export named ...". PHẢI đặt trước mọi <script type="module">.
-     View modules tự cache-bust qua assetVersion (withV) trong shell.js. -->
-<script type="importmap">
-{
-  "imports": {
-    "/assets/pkd/pkd/lib/api.js": "/assets/pkd/pkd/lib/api.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/lib/dom.js": "/assets/pkd/pkd/lib/dom.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/lib/format.js": "/assets/pkd/pkd/lib/format.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/lib/router.js": "/assets/pkd/pkd/lib/router.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/lib/store.js": "/assets/pkd/pkd/lib/store.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/banner.js": "/assets/pkd/pkd/components/banner.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/bottom-nav.js": "/assets/pkd/pkd/components/bottom-nav.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/chart.js": "/assets/pkd/pkd/components/chart.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/data-table.js": "/assets/pkd/pkd/components/data-table.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/empty-state.js": "/assets/pkd/pkd/components/empty-state.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/governance.js": "/assets/pkd/pkd/components/governance.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/vn-map.js": "/assets/pkd/pkd/components/vn-map.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/loading.js": "/assets/pkd/pkd/components/loading.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/modal.js": "/assets/pkd/pkd/components/modal.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/ql-nav.js": "/assets/pkd/pkd/components/ql-nav.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/sales-matrix.js": "/assets/pkd/pkd/components/sales-matrix.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/season-picker.js": "/assets/pkd/pkd/components/season-picker.js?v={{ kd_v }}",
-    "/assets/pkd/pkd/components/toast.js": "/assets/pkd/pkd/components/toast.js?v={{ kd_v }}"
-  }
-}
-</script>
+<!-- Asset phục vụ theo ĐƯỜNG DẪN CÓ PHIÊN BẢN {{ asset_base }} (= /kd-assets/<băm nội dung>)
+     — xem pkd/asset_renderer.py. Mọi import tương đối trong JS tự kế thừa phiên bản
+     qua đường dẫn nên KHÔNG cần import map, và CDN bỏ query string / assets chưa
+     `bench build` không còn làm trình duyệt chạy bản cũ. -->
 
 <script>
     // Context server-side cho SPA đọc (không gọi thêm API để biết mình là ai).
@@ -53,8 +27,8 @@
         isAdmin: {{ (is_admin or 0)|tojson }},
         baseUrl: "{{ frappe.utils.get_url() }}",
         csrfToken: "{{ frappe.session.csrf_token if frappe.session.csrf_token else '' }}",
-        // Đổi mỗi lần tải trang (server-rendered) → cache-bust view module lazy-load.
-        assetVersion: {{ kd_v | tojson }}
+        // Phiên bản asset (băm nội dung) — ổn định giữa các lần tải, đổi khi code đổi.
+        assetVersion: {{ asset_version | tojson }}
     };
 </script>
 {% endblock %}
@@ -122,7 +96,7 @@
     </div>
 </div>
 
-<script type="module" src="/assets/pkd/pkd/shell.js?v={{ kd_v }}"></script>
+<script type="module" src="{{ asset_base }}/shell.js"></script>
 
 <script>
 // Phát hiện shell.js CŨ do tầng cache (CDN/proxy) trả nhầm dù HTML đã mới:
@@ -141,7 +115,7 @@ window.addEventListener('load', function () {
             '<a href="javascript:location.reload(true)" style="color:#fff;text-decoration:underline;">Tải lại</a>';
         document.body.appendChild(el);
         console.error('[PKD] SHELL BUILD MISMATCH — expected', expected, 'got', got,
-            '→ tầng cache (CDN/nginx) đang trả /assets/pkd/pkd/shell.js cũ, ?v= bị vô hiệu.');
+            '→ shell.js nhận được khác bản server kỳ vọng (HTML bị cache cũ, hoặc server chưa restart).');
     }, 3000);
 });
 </script>

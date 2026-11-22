@@ -1,5 +1,5 @@
 // Bản đồ choropleth doanh số Việt Nam — SVG thuần, không lib ngoài.
-// Hình học: /assets/pkd/pkd/data/vn34.geo.json — 63 ranh giới cũ, mỗi shape gắn
+// Hình học: ../data/vn34.geo.json (tương đối module → cùng phiên bản đường dẫn) — 63 ranh giới cũ, mỗi shape gắn
 // properties {n: tỉnh MỚI (34, sau sáp nhập 07/2025), o: tỉnh cũ}. Toạ độ đã
 // phẳng (planar) → chỉ fit bbox + lật trục Y, không cần chiếu bản đồ.
 // Dataviz: sequential 1 hue light→dark; chưa có DS = xám nền (ngoài thang);
@@ -15,7 +15,8 @@ let _geoPromise = null;
 function loadGeo() {
     if (!_geoPromise) {
         const v = (window.PKD_CONTEXT || {}).assetVersion || '1';
-        _geoPromise = fetch(`/assets/pkd/pkd/data/vn34.geo.json?v=${encodeURIComponent(v)}`)
+        // Tương đối với CHÍNH module (/kd-assets/<ver>/components/) → cùng phiên bản đường dẫn.
+        _geoPromise = fetch(new URL(`../data/vn34.geo.json?v=${encodeURIComponent(v)}`, import.meta.url))
             .then((r) => { if (!r.ok) throw new Error('Không tải được dữ liệu bản đồ (' + r.status + ')'); return r.json(); })
             .catch((e) => { _geoPromise = null; throw e; });
     }

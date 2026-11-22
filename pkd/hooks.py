@@ -30,3 +30,10 @@ fixtures = [
 ]
 
 # MVP: mọi số liệu query-on-demand → KHÔNG cần doc_events/scheduler (Mục 5).
+
+# ─────────────────────────────────────────────────────────────────────
+# Asset portal /kd phục vụ theo ĐƯỜNG DẪN CÓ PHIÊN BẢN /kd-assets/<ver>/…
+# (đọc thẳng từ code app, phiên bản = băm nội dung) — miễn nhiễm CDN bỏ query
+# string và không cần `bench build`. Xem pkd/asset_renderer.py.
+# ─────────────────────────────────────────────────────────────────────
+page_renderer = ["pkd.asset_renderer.PKDAssetRenderer"]

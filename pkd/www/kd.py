@@ -10,13 +10,15 @@ from __future__ import annotations
 import frappe
 from frappe import _
 
+from pkd.asset_renderer import asset_version
+
 no_cache = 1  # SPA shell — không cache server-side
 
 SALES_ROLES = {"Sales Dashboard", "System Manager"}
 
 # PHẢI khớp hằng BUILD trong public/pkd/shell.js — dùng để phát hiện tầng cache
 # (CDN/proxy) trả shell.js cũ dù HTML đã mới (kd.html so sánh và cảnh báo).
-SHELL_BUILD = "ngay-r6"
+SHELL_BUILD = "path-r7"
 
 
 def get_context(context: dict) -> dict:
@@ -28,6 +30,8 @@ def get_context(context: dict) -> dict:
 	roles = set(frappe.get_roles())
 	authorized = bool(SALES_ROLES & roles)
 	is_admin = "System Manager" in roles
+
+	ver = asset_version()
 
 	user_doc = frappe.db.get_value(
 		"User", frappe.session.user, ["first_name", "full_name"], as_dict=True
@@ -42,6 +46,9 @@ def get_context(context: dict) -> dict:
 			"authorized": 1 if authorized else 0,
 			"is_admin": 1 if is_admin else 0,
 			"shell_build": SHELL_BUILD,
+			# Asset theo đường dẫn có phiên bản (băm nội dung) — xem pkd/asset_renderer.py.
+			"asset_version": ver,
+			"asset_base": f"/kd-assets/{ver}",
 			"no_cache": 1,
 		}
 	)
