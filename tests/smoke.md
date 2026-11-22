@@ -6,7 +6,7 @@ Sau `migrate → build --app pkd → restart → refresh`, đăng nhập user c�
 ## Chuẩn bị dữ liệu
 - [ ] PKD Settings: đã chọn 3 Customer Group (NPP / MT / Du lịch).
 - [ ] `[VERIFY]` UOM thùng: `BOX_UOMS = ("Thùng","Box")` trong `pkd/api/utils.py` khớp site.
-- [ ] `[VERIFY]` mốc Tết trong `TET_DATES` (2015–2035) khớp lịch âm.
+- [ ] Ngày Tết lấy từ BC Settings › Ngày mùng 1 Tết (app bc, nguồn duy nhất); `TET_DATES` (2015–2035) trong `pkd/api/utils.py` chỉ là dự phòng khi site chưa cài bc hoặc năm chưa khai.
 
 ## 10 route
 | # | Route | Kỳ vọng |

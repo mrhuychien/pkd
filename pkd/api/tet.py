@@ -19,7 +19,7 @@ from pkd.api.utils import (
 	groups_of,
 	pct,
 	tet_date,
-	TET_DATES,
+	tet_dates_map,
 )
 
 
@@ -56,14 +56,14 @@ def _season_cumulative(td, n, groups, item_group) -> dict:
 	return cum
 
 
-def _pick_current_year(today, n):
-	"""Mùa hiện hành = mùa có cửa sổ chứa hôm nay; else mùa sắp tới."""
-	for y, dstr in TET_DATES.items():
+def _pick_current_year(today, n, dates):
+	"""Mùa hiện hành = mùa có cửa sổ chứa hôm nay; else mùa sắp tới. `dates` = tet_dates_map()."""
+	for y, dstr in dates.items():
 		td = getdate(dstr)
 		if add_days(td, -n) <= today <= td:
 			return y
-	upcoming = sorted(getdate(d) for d in TET_DATES.values() if getdate(d) >= today)
-	return upcoming[0].year if upcoming else max(TET_DATES)
+	upcoming = sorted(getdate(d) for d in dates.values() if getdate(d) >= today)
+	return upcoming[0].year if upcoming else max(dates)
 
 
 @frappe.whitelist()
@@ -75,19 +75,20 @@ def get_tet_dashboard(tet_year=None, channel=None, item_group=None):
 	n = int(settings.tet_cua_so_ngay or 60)
 	item_group = item_group or None
 
-	cur_year = int(tet_year) if tet_year else _pick_current_year(today, n)
-	cur_tet = tet_date(cur_year)
+	dates = tet_dates_map()  # ngày Tết: BC Settings (nguồn duy nhất) → dự phòng TET_DATES
+	cur_year = int(tet_year) if tet_year else _pick_current_year(today, n, dates)
+	cur_tet = tet_date(cur_year, dates)
 	if not cur_tet:
 		return {"available": False, "message": f"Chưa có mốc Tết cho năm {cur_year}."}
 
 	groups = groups_of(channel) if channel else list(channel_map().keys())
 
 	# 4 mùa: 3 mùa gần nhất + hiện hành.
-	years = [y for y in (cur_year - 3, cur_year - 2, cur_year - 1, cur_year) if y in TET_DATES]
+	years = [y for y in (cur_year - 3, cur_year - 2, cur_year - 1, cur_year) if y in dates]
 	series = []
 	cum_by_year = {}
 	for y in years:
-		td = tet_date(y)
+		td = tet_date(y, dates)
 		cum = _season_cumulative(td, n, groups, item_group)
 		cum_by_year[y] = cum
 		series.append(
