@@ -27,3 +27,7 @@ export function chartRegistry() {
         destroy() { list.forEach((c) => { try { c.destroy(); } catch {} }); list = []; },
     };
 }
+
+// Màu kênh CỐ ĐỊNH xuyên mọi chart/view (palette đã validate — màu theo THỰC THỂ kênh,
+// không theo thứ hạng). Nguồn duy nhất: Tổng quan, Theo ngày… cùng import từ đây.
+export const CH_COLORS = { npp: '#f59e0b', mt: '#10b981', dulich: '#3b82f6', showroom: '#8b5cf6', khac: '#ec4899' };

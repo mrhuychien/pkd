@@ -6,7 +6,7 @@ import * as store from './lib/store.js';
 
 // Dấu vết build — đổi mỗi lần sửa shell/routes. Gõ `PKD.build` trong Console
 // để biết trình duyệt đang chạy bản nào (chẩn đoán shell cũ/mới tức thì).
-const BUILD = 'npptt-r5';
+const BUILD = 'ngay-r6';
 
 // ─── 1. Sanity check ───────────────────────────────────────────────────
 if (!window.PKD_CONTEXT) {
@@ -36,6 +36,7 @@ const ASSET_V = encodeURIComponent(window.PKD_CONTEXT?.assetVersion || '');
 const withV = (path) => (ASSET_V ? `${path}?v=${ASSET_V}` : path);
 const VIEW_MODULES = {
     '/'         : () => import(withV('./views/tongquan.js')),
+    '/theongay' : () => import(withV('./views/theongay.js')),
     '/npp'      : () => import(withV('./views/npp.js')),
     '/mt'       : () => import(withV('./views/mt.js')),
     '/dulich'   : () => import(withV('./views/dulich.js')),
@@ -61,6 +62,7 @@ const VIEW_MODULES = {
 
 const TITLES = {
     '/'         : 'Tổng quan',
+    '/theongay' : 'Theo ngày',
     '/npp'      : 'Kênh NPP',
     '/mt'       : 'Kênh MT',
     '/dulich'   : 'Kênh Du lịch',
@@ -100,7 +102,7 @@ async function renderRoute(routeKey, ctx) {
 
 // ─── 5b. Desktop nav ngang (8 mục; CSS ẩn trên mobile) ─────────────────
 const DESK_NAV = [
-    ['/', '🏠 Tổng quan'], ['/npp', '📦 NPP'], ['/mt', '🏬 MT'], ['/dulich', '🧳 Du lịch'],
+    ['/', '🏠 Tổng quan'], ['/theongay', '📅 Theo ngày'], ['/npp', '📦 NPP'], ['/mt', '🏬 MT'], ['/dulich', '🧳 Du lịch'],
     ['/ql-ov', '🛠 Quản lý kênh'],
     ['/trungbay', '🎁 Trưng bày'], ['/tet', '🧧 Tết'], ['/chitieu', '🎯 Chỉ tiêu'], ['/khampha', '🔍 Khám phá'],
 ];
@@ -124,7 +126,7 @@ function highlightDesktopNav(path) {
 }
 
 // ─── 6. Routes ─────────────────────────────────────────────────────────
-const simple = ['/', '/npp', '/mt', '/dulich', '/them', '/trungbay', '/tet', '/chitieu', '/khampha',
+const simple = ['/', '/theongay', '/npp', '/mt', '/dulich', '/them', '/trungbay', '/tet', '/chitieu', '/khampha',
                 '/ql-ov', '/ql-sp', '/ql-khach', '/ql-target', '/ql-alert', '/ql-debt', '/ql-ds', '/quan-tri', '/npp-tt'];
 simple.forEach((r) => {
     router.add(r, ({ query }) => { highlightActiveRoute(r); return renderRoute(r, { query }); });

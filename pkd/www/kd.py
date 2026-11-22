@@ -16,7 +16,7 @@ SALES_ROLES = {"Sales Dashboard", "System Manager"}
 
 # PHẢI khớp hằng BUILD trong public/pkd/shell.js — dùng để phát hiện tầng cache
 # (CDN/proxy) trả shell.js cũ dù HTML đã mới (kd.html so sánh và cảnh báo).
-SHELL_BUILD = "npptt-r5"
+SHELL_BUILD = "ngay-r6"
 
 
 def get_context(context: dict) -> dict:

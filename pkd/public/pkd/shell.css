@@ -165,7 +165,9 @@
     -webkit-backdrop-filter: blur(20px);
     border-top: 1px solid var(--kd-border);
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    /* Tự chia đều theo SỐ MỤC (6: + "Theo ngày") — không cứng repeat(5) để thêm tab không vỡ lưới. */
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
     z-index: 100;
 }
 
